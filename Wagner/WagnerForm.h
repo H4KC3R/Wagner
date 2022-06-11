@@ -34,23 +34,19 @@ namespace Wagner {
 				delete components;
 			}
 		}
-	private: System::Windows::Forms::TextBox^ CommandTextBox;
+
 	private: System::Windows::Forms::TextBox^ ServerAdrress;
 	private: System::Windows::Forms::Button^ PauseButton;
 	private: System::Windows::Forms::Button^ StopButton;
-
-
-
 	private: System::Windows::Forms::Button^ StartButton;
-
 	private: System::Windows::Forms::Button^ ExpandButton;
-
 	private: System::Windows::Forms::ListBox^ listBox1;
 	private: System::Windows::Forms::ListBox^ CommandListBox;
-
 	private: System::Windows::Forms::TextBox^ CommandTB;
 	private: System::Windows::Forms::TextBox^ textBox3;
 	private: System::Windows::Forms::ProgressBar^ CyclogrammProgressBar;
+	private: System::Windows::Forms::RichTextBox^ CyclogrammTextBox;
+	private: System::Windows::Forms::Button^ ClearCyclogrammButton;
 
 
 
@@ -69,7 +65,6 @@ namespace Wagner {
 		/// </summary>
 		void InitializeComponent(void)
 		{
-			this->CommandTextBox = (gcnew System::Windows::Forms::TextBox());
 			this->ServerAdrress = (gcnew System::Windows::Forms::TextBox());
 			this->PauseButton = (gcnew System::Windows::Forms::Button());
 			this->StopButton = (gcnew System::Windows::Forms::Button());
@@ -80,19 +75,9 @@ namespace Wagner {
 			this->CommandTB = (gcnew System::Windows::Forms::TextBox());
 			this->textBox3 = (gcnew System::Windows::Forms::TextBox());
 			this->CyclogrammProgressBar = (gcnew System::Windows::Forms::ProgressBar());
+			this->CyclogrammTextBox = (gcnew System::Windows::Forms::RichTextBox());
+			this->ClearCyclogrammButton = (gcnew System::Windows::Forms::Button());
 			this->SuspendLayout();
-			// 
-			// CommandTextBox
-			// 
-			this->CommandTextBox->Font = (gcnew System::Drawing::Font(L"Microsoft Sans Serif", 10.2F, System::Drawing::FontStyle::Regular, System::Drawing::GraphicsUnit::Point,
-				static_cast<System::Byte>(204)));
-			this->CommandTextBox->Location = System::Drawing::Point(6, 244);
-			this->CommandTextBox->Margin = System::Windows::Forms::Padding(2);
-			this->CommandTextBox->Multiline = true;
-			this->CommandTextBox->Name = L"CommandTextBox";
-			this->CommandTextBox->ScrollBars = System::Windows::Forms::ScrollBars::Both;
-			this->CommandTextBox->Size = System::Drawing::Size(524, 308);
-			this->CommandTextBox->TabIndex = 1;
 			// 
 			// ServerAdrress
 			// 
@@ -141,7 +126,7 @@ namespace Wagner {
 			this->ExpandButton->Name = L"ExpandButton";
 			this->ExpandButton->Size = System::Drawing::Size(20, 168);
 			this->ExpandButton->TabIndex = 8;
-			this->ExpandButton->Text = L">";
+			this->ExpandButton->Text = L"<";
 			this->ExpandButton->UseVisualStyleBackColor = true;
 			this->ExpandButton->Click += gcnew System::EventHandler(this, &WagnerForm::ExpandButton_Click);
 			// 
@@ -156,10 +141,15 @@ namespace Wagner {
 			// CommandListBox
 			// 
 			this->CommandListBox->FormattingEnabled = true;
+			this->CommandListBox->Items->AddRange(gcnew cli::array< System::Object^  >(5) {
+				L"getPosition", L"moveTo", L"parking", L"getErrors",
+					L"resetErrors"
+			});
 			this->CommandListBox->Location = System::Drawing::Point(561, 41);
 			this->CommandListBox->Name = L"CommandListBox";
 			this->CommandListBox->Size = System::Drawing::Size(132, 511);
 			this->CommandListBox->TabIndex = 10;
+			this->CommandListBox->MouseDoubleClick += gcnew System::Windows::Forms::MouseEventHandler(this, &WagnerForm::CommandListBox_MouseDoubleClick);
 			// 
 			// CommandTB
 			// 
@@ -197,11 +187,31 @@ namespace Wagner {
 			this->CyclogrammProgressBar->Size = System::Drawing::Size(524, 23);
 			this->CyclogrammProgressBar->TabIndex = 13;
 			// 
+			// CyclogrammTextBox
+			// 
+			this->CyclogrammTextBox->Location = System::Drawing::Point(6, 245);
+			this->CyclogrammTextBox->Name = L"CyclogrammTextBox";
+			this->CyclogrammTextBox->Size = System::Drawing::Size(524, 309);
+			this->CyclogrammTextBox->TabIndex = 14;
+			this->CyclogrammTextBox->Text = L" ";
+			// 
+			// ClearCyclogrammButton
+			// 
+			this->ClearCyclogrammButton->Location = System::Drawing::Point(6, 187);
+			this->ClearCyclogrammButton->Name = L"ClearCyclogrammButton";
+			this->ClearCyclogrammButton->Size = System::Drawing::Size(75, 23);
+			this->ClearCyclogrammButton->TabIndex = 15;
+			this->ClearCyclogrammButton->Text = L"Очистить";
+			this->ClearCyclogrammButton->UseVisualStyleBackColor = true;
+			this->ClearCyclogrammButton->Click += gcnew System::EventHandler(this, &WagnerForm::ClearCyclogrammButton_Click);
+			// 
 			// WagnerForm
 			// 
 			this->AutoScaleDimensions = System::Drawing::SizeF(6, 13);
 			this->AutoScaleMode = System::Windows::Forms::AutoScaleMode::Font;
-			this->ClientSize = System::Drawing::Size(559, 557);
+			this->ClientSize = System::Drawing::Size(704, 557);
+			this->Controls->Add(this->ClearCyclogrammButton);
+			this->Controls->Add(this->CyclogrammTextBox);
 			this->Controls->Add(this->CyclogrammProgressBar);
 			this->Controls->Add(this->textBox3);
 			this->Controls->Add(this->CommandTB);
@@ -212,10 +222,10 @@ namespace Wagner {
 			this->Controls->Add(this->StopButton);
 			this->Controls->Add(this->PauseButton);
 			this->Controls->Add(this->ServerAdrress);
-			this->Controls->Add(this->CommandTextBox);
 			this->Name = L"WagnerForm";
 			this->StartPosition = System::Windows::Forms::FormStartPosition::CenterScreen;
 			this->Text = L"Wagner";
+			this->Load += gcnew System::EventHandler(this, &WagnerForm::WagnerForm_Load);
 			this->ResumeLayout(false);
 			this->PerformLayout();
 
@@ -231,8 +241,24 @@ namespace Wagner {
 			ExpandButton->Text = ">";
 		}
 	}
+
 private: System::Void StartButton_Click(System::Object^ sender, System::EventArgs^ e) {
 	CyclogrammProgressBar->Increment(20);
+}
+
+private: System::Void WagnerForm_Load(System::Object^ sender, System::EventArgs^ e) {
+	CyclogrammTextBox->AllowDrop = true;
+	CyclogrammTextBox->DragDrop += gcnew System::Windows::Forms::DragEventHandler(this, &Wagner::WagnerForm::OnDragDrop);
+	CyclogrammTextBox->Clear();
+}
+
+private: System::Void CommandListBox_MouseDoubleClick(System::Object^ sender, System::Windows::Forms::MouseEventArgs^ e) {
+	CyclogrammTextBox->Text += CommandListBox->SelectedItem->ToString() + "()" + "\r\n";
+}
+	   void OnDragDrop(System::Object^ sender, System::Windows::Forms::DragEventArgs^ e);
+
+private: System::Void ClearCyclogrammButton_Click(System::Object^ sender, System::EventArgs^ e) {
+	CyclogrammTextBox->Clear();
 }
 };
 }
