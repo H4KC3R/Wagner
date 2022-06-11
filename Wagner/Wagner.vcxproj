@@ -144,6 +144,11 @@
   <ItemGroup>
     <Text Include=".gitignore" />
   </ItemGroup>
+  <ItemGroup>
+    <EmbeddedResource Include="WagnerForm.resx">
+      <DependentUpon>WagnerForm.h</DependentUpon>
+    </EmbeddedResource>
+  </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
   </ImportGroup>
