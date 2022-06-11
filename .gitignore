@@ -1,1 +1,2 @@
-Wagner\Debug
+# /.gitignore
+src/output.log
