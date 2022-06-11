@@ -40,10 +40,12 @@ namespace Wagner {
 	private: System::Windows::Forms::Button^ StopButton;
 	private: System::Windows::Forms::Button^ StartButton;
 	private: System::Windows::Forms::Button^ ExpandButton;
-	private: System::Windows::Forms::ListBox^ listBox1;
+	private: System::Windows::Forms::ListBox^ clientsListBox;
+
 	private: System::Windows::Forms::ListBox^ CommandListBox;
 	private: System::Windows::Forms::TextBox^ CommandTB;
-	private: System::Windows::Forms::TextBox^ textBox3;
+	private: System::Windows::Forms::TextBox^ chatTextBox;
+
 	private: System::Windows::Forms::ProgressBar^ CyclogrammProgressBar;
 	private: System::Windows::Forms::RichTextBox^ CyclogrammTextBox;
 	private: System::Windows::Forms::Button^ ClearCyclogrammButton;
@@ -65,15 +67,16 @@ namespace Wagner {
 		/// </summary>
 		void InitializeComponent(void)
 		{
+			System::ComponentModel::ComponentResourceManager^ resources = (gcnew System::ComponentModel::ComponentResourceManager(WagnerForm::typeid));
 			this->ServerAdrress = (gcnew System::Windows::Forms::TextBox());
 			this->PauseButton = (gcnew System::Windows::Forms::Button());
 			this->StopButton = (gcnew System::Windows::Forms::Button());
 			this->StartButton = (gcnew System::Windows::Forms::Button());
 			this->ExpandButton = (gcnew System::Windows::Forms::Button());
-			this->listBox1 = (gcnew System::Windows::Forms::ListBox());
+			this->clientsListBox = (gcnew System::Windows::Forms::ListBox());
 			this->CommandListBox = (gcnew System::Windows::Forms::ListBox());
 			this->CommandTB = (gcnew System::Windows::Forms::TextBox());
-			this->textBox3 = (gcnew System::Windows::Forms::TextBox());
+			this->chatTextBox = (gcnew System::Windows::Forms::TextBox());
 			this->CyclogrammProgressBar = (gcnew System::Windows::Forms::ProgressBar());
 			this->CyclogrammTextBox = (gcnew System::Windows::Forms::RichTextBox());
 			this->ClearCyclogrammButton = (gcnew System::Windows::Forms::Button());
@@ -94,6 +97,7 @@ namespace Wagner {
 			// 
 			// PauseButton
 			// 
+			this->PauseButton->Enabled = false;
 			this->PauseButton->Location = System::Drawing::Point(6, 39);
 			this->PauseButton->Name = L"PauseButton";
 			this->PauseButton->Size = System::Drawing::Size(75, 23);
@@ -103,6 +107,7 @@ namespace Wagner {
 			// 
 			// StopButton
 			// 
+			this->StopButton->Enabled = false;
 			this->StopButton->Location = System::Drawing::Point(6, 68);
 			this->StopButton->Name = L"StopButton";
 			this->StopButton->Size = System::Drawing::Size(75, 23);
@@ -130,13 +135,13 @@ namespace Wagner {
 			this->ExpandButton->UseVisualStyleBackColor = true;
 			this->ExpandButton->Click += gcnew System::EventHandler(this, &WagnerForm::ExpandButton_Click);
 			// 
-			// listBox1
+			// clientsListBox
 			// 
-			this->listBox1->FormattingEnabled = true;
-			this->listBox1->Location = System::Drawing::Point(87, 11);
-			this->listBox1->Name = L"listBox1";
-			this->listBox1->Size = System::Drawing::Size(90, 199);
-			this->listBox1->TabIndex = 9;
+			this->clientsListBox->FormattingEnabled = true;
+			this->clientsListBox->Location = System::Drawing::Point(87, 11);
+			this->clientsListBox->Name = L"clientsListBox";
+			this->clientsListBox->Size = System::Drawing::Size(90, 199);
+			this->clientsListBox->TabIndex = 9;
 			// 
 			// CommandListBox
 			// 
@@ -165,18 +170,18 @@ namespace Wagner {
 			this->CommandTB->Text = L"Команды";
 			this->CommandTB->TextAlign = System::Windows::Forms::HorizontalAlignment::Center;
 			// 
-			// textBox3
+			// chatTextBox
 			// 
-			this->textBox3->Font = (gcnew System::Drawing::Font(L"Microsoft Sans Serif", 10.2F, System::Drawing::FontStyle::Regular, System::Drawing::GraphicsUnit::Point,
+			this->chatTextBox->Font = (gcnew System::Drawing::Font(L"Microsoft Sans Serif", 10.2F, System::Drawing::FontStyle::Regular, System::Drawing::GraphicsUnit::Point,
 				static_cast<System::Byte>(204)));
-			this->textBox3->Location = System::Drawing::Point(182, 39);
-			this->textBox3->Margin = System::Windows::Forms::Padding(2);
-			this->textBox3->Multiline = true;
-			this->textBox3->Name = L"textBox3";
-			this->textBox3->ReadOnly = true;
-			this->textBox3->ScrollBars = System::Windows::Forms::ScrollBars::Both;
-			this->textBox3->Size = System::Drawing::Size(348, 171);
-			this->textBox3->TabIndex = 12;
+			this->chatTextBox->Location = System::Drawing::Point(182, 39);
+			this->chatTextBox->Margin = System::Windows::Forms::Padding(2);
+			this->chatTextBox->Multiline = true;
+			this->chatTextBox->Name = L"chatTextBox";
+			this->chatTextBox->ReadOnly = true;
+			this->chatTextBox->ScrollBars = System::Windows::Forms::ScrollBars::Both;
+			this->chatTextBox->Size = System::Drawing::Size(348, 171);
+			this->chatTextBox->TabIndex = 12;
 			// 
 			// CyclogrammProgressBar
 			// 
@@ -213,15 +218,16 @@ namespace Wagner {
 			this->Controls->Add(this->ClearCyclogrammButton);
 			this->Controls->Add(this->CyclogrammTextBox);
 			this->Controls->Add(this->CyclogrammProgressBar);
-			this->Controls->Add(this->textBox3);
+			this->Controls->Add(this->chatTextBox);
 			this->Controls->Add(this->CommandTB);
 			this->Controls->Add(this->CommandListBox);
-			this->Controls->Add(this->listBox1);
+			this->Controls->Add(this->clientsListBox);
 			this->Controls->Add(this->ExpandButton);
 			this->Controls->Add(this->StartButton);
 			this->Controls->Add(this->StopButton);
 			this->Controls->Add(this->PauseButton);
 			this->Controls->Add(this->ServerAdrress);
+			this->Icon = (cli::safe_cast<System::Drawing::Icon^>(resources->GetObject(L"$this.Icon")));
 			this->Name = L"WagnerForm";
 			this->StartPosition = System::Windows::Forms::FormStartPosition::CenterScreen;
 			this->Text = L"Wagner";
