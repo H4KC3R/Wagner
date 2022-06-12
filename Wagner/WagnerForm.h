@@ -46,9 +46,10 @@ namespace Wagner {
 	private: System::Windows::Forms::TextBox^ CommandTB;
 	private: System::Windows::Forms::TextBox^ chatTextBox;
 
-	private: System::Windows::Forms::ProgressBar^ CyclogrammProgressBar;
+
 	private: System::Windows::Forms::RichTextBox^ CyclogrammTextBox;
 	private: System::Windows::Forms::Button^ ClearCyclogrammButton;
+	private: ProgressBarSample::TextProgressBar^ CyclogrammProgressBar;
 
 
 
@@ -77,30 +78,31 @@ namespace Wagner {
 			this->CommandListBox = (gcnew System::Windows::Forms::ListBox());
 			this->CommandTB = (gcnew System::Windows::Forms::TextBox());
 			this->chatTextBox = (gcnew System::Windows::Forms::TextBox());
-			this->CyclogrammProgressBar = (gcnew System::Windows::Forms::ProgressBar());
 			this->CyclogrammTextBox = (gcnew System::Windows::Forms::RichTextBox());
 			this->ClearCyclogrammButton = (gcnew System::Windows::Forms::Button());
+			this->CyclogrammProgressBar = (gcnew ProgressBarSample::TextProgressBar());
 			this->SuspendLayout();
 			// 
 			// ServerAdrress
 			// 
 			this->ServerAdrress->Font = (gcnew System::Drawing::Font(L"Microsoft Sans Serif", 10.2F, System::Drawing::FontStyle::Regular, System::Drawing::GraphicsUnit::Point,
 				static_cast<System::Byte>(204)));
-			this->ServerAdrress->Location = System::Drawing::Point(182, 11);
-			this->ServerAdrress->Margin = System::Windows::Forms::Padding(2);
+			this->ServerAdrress->Location = System::Drawing::Point(243, 14);
+			this->ServerAdrress->Margin = System::Windows::Forms::Padding(3, 2, 3, 2);
 			this->ServerAdrress->Multiline = true;
 			this->ServerAdrress->Name = L"ServerAdrress";
 			this->ServerAdrress->ReadOnly = true;
-			this->ServerAdrress->Size = System::Drawing::Size(348, 22);
+			this->ServerAdrress->Size = System::Drawing::Size(463, 26);
 			this->ServerAdrress->TabIndex = 3;
 			this->ServerAdrress->Text = L"127.0.0.1:9000";
 			// 
 			// PauseButton
 			// 
 			this->PauseButton->Enabled = false;
-			this->PauseButton->Location = System::Drawing::Point(6, 39);
+			this->PauseButton->Location = System::Drawing::Point(8, 48);
+			this->PauseButton->Margin = System::Windows::Forms::Padding(4);
 			this->PauseButton->Name = L"PauseButton";
-			this->PauseButton->Size = System::Drawing::Size(75, 23);
+			this->PauseButton->Size = System::Drawing::Size(100, 28);
 			this->PauseButton->TabIndex = 4;
 			this->PauseButton->Text = L"Пауза";
 			this->PauseButton->UseVisualStyleBackColor = true;
@@ -108,18 +110,20 @@ namespace Wagner {
 			// StopButton
 			// 
 			this->StopButton->Enabled = false;
-			this->StopButton->Location = System::Drawing::Point(6, 68);
+			this->StopButton->Location = System::Drawing::Point(8, 84);
+			this->StopButton->Margin = System::Windows::Forms::Padding(4);
 			this->StopButton->Name = L"StopButton";
-			this->StopButton->Size = System::Drawing::Size(75, 23);
+			this->StopButton->Size = System::Drawing::Size(100, 28);
 			this->StopButton->TabIndex = 5;
 			this->StopButton->Text = L"Стоп";
 			this->StopButton->UseVisualStyleBackColor = true;
 			// 
 			// StartButton
 			// 
-			this->StartButton->Location = System::Drawing::Point(6, 10);
+			this->StartButton->Location = System::Drawing::Point(8, 12);
+			this->StartButton->Margin = System::Windows::Forms::Padding(4);
 			this->StartButton->Name = L"StartButton";
-			this->StartButton->Size = System::Drawing::Size(75, 23);
+			this->StartButton->Size = System::Drawing::Size(100, 28);
 			this->StartButton->TabIndex = 7;
 			this->StartButton->Text = L"Начать";
 			this->StartButton->UseVisualStyleBackColor = true;
@@ -127,9 +131,10 @@ namespace Wagner {
 			// 
 			// ExpandButton
 			// 
-			this->ExpandButton->Location = System::Drawing::Point(535, 183);
+			this->ExpandButton->Location = System::Drawing::Point(713, 225);
+			this->ExpandButton->Margin = System::Windows::Forms::Padding(4);
 			this->ExpandButton->Name = L"ExpandButton";
-			this->ExpandButton->Size = System::Drawing::Size(20, 168);
+			this->ExpandButton->Size = System::Drawing::Size(27, 207);
 			this->ExpandButton->TabIndex = 8;
 			this->ExpandButton->Text = L"<";
 			this->ExpandButton->UseVisualStyleBackColor = true;
@@ -138,21 +143,25 @@ namespace Wagner {
 			// clientsListBox
 			// 
 			this->clientsListBox->FormattingEnabled = true;
-			this->clientsListBox->Location = System::Drawing::Point(87, 11);
+			this->clientsListBox->ItemHeight = 16;
+			this->clientsListBox->Location = System::Drawing::Point(116, 14);
+			this->clientsListBox->Margin = System::Windows::Forms::Padding(4);
 			this->clientsListBox->Name = L"clientsListBox";
-			this->clientsListBox->Size = System::Drawing::Size(90, 199);
+			this->clientsListBox->Size = System::Drawing::Size(119, 244);
 			this->clientsListBox->TabIndex = 9;
 			// 
 			// CommandListBox
 			// 
 			this->CommandListBox->FormattingEnabled = true;
+			this->CommandListBox->ItemHeight = 16;
 			this->CommandListBox->Items->AddRange(gcnew cli::array< System::Object^  >(5) {
 				L"getPosition", L"moveTo", L"parking", L"getErrors",
 					L"resetErrors"
 			});
-			this->CommandListBox->Location = System::Drawing::Point(561, 41);
+			this->CommandListBox->Location = System::Drawing::Point(748, 50);
+			this->CommandListBox->Margin = System::Windows::Forms::Padding(4);
 			this->CommandListBox->Name = L"CommandListBox";
-			this->CommandListBox->Size = System::Drawing::Size(132, 511);
+			this->CommandListBox->Size = System::Drawing::Size(175, 628);
 			this->CommandListBox->TabIndex = 10;
 			this->CommandListBox->MouseDoubleClick += gcnew System::Windows::Forms::MouseEventHandler(this, &WagnerForm::CommandListBox_MouseDoubleClick);
 			// 
@@ -160,12 +169,12 @@ namespace Wagner {
 			// 
 			this->CommandTB->Font = (gcnew System::Drawing::Font(L"Microsoft Sans Serif", 10.2F, System::Drawing::FontStyle::Regular, System::Drawing::GraphicsUnit::Point,
 				static_cast<System::Byte>(204)));
-			this->CommandTB->Location = System::Drawing::Point(561, 11);
-			this->CommandTB->Margin = System::Windows::Forms::Padding(2);
+			this->CommandTB->Location = System::Drawing::Point(748, 14);
+			this->CommandTB->Margin = System::Windows::Forms::Padding(3, 2, 3, 2);
 			this->CommandTB->Multiline = true;
 			this->CommandTB->Name = L"CommandTB";
 			this->CommandTB->ReadOnly = true;
-			this->CommandTB->Size = System::Drawing::Size(132, 22);
+			this->CommandTB->Size = System::Drawing::Size(175, 26);
 			this->CommandTB->TabIndex = 11;
 			this->CommandTB->Text = L"Команды";
 			this->CommandTB->TextAlign = System::Windows::Forms::HorizontalAlignment::Center;
@@ -174,50 +183,55 @@ namespace Wagner {
 			// 
 			this->chatTextBox->Font = (gcnew System::Drawing::Font(L"Microsoft Sans Serif", 10.2F, System::Drawing::FontStyle::Regular, System::Drawing::GraphicsUnit::Point,
 				static_cast<System::Byte>(204)));
-			this->chatTextBox->Location = System::Drawing::Point(182, 39);
-			this->chatTextBox->Margin = System::Windows::Forms::Padding(2);
+			this->chatTextBox->Location = System::Drawing::Point(243, 48);
+			this->chatTextBox->Margin = System::Windows::Forms::Padding(3, 2, 3, 2);
 			this->chatTextBox->Multiline = true;
 			this->chatTextBox->Name = L"chatTextBox";
 			this->chatTextBox->ReadOnly = true;
 			this->chatTextBox->ScrollBars = System::Windows::Forms::ScrollBars::Both;
-			this->chatTextBox->Size = System::Drawing::Size(348, 171);
+			this->chatTextBox->Size = System::Drawing::Size(463, 210);
 			this->chatTextBox->TabIndex = 12;
-			// 
-			// CyclogrammProgressBar
-			// 
-			this->CyclogrammProgressBar->BackColor = System::Drawing::Color::MediumBlue;
-			this->CyclogrammProgressBar->ForeColor = System::Drawing::Color::ForestGreen;
-			this->CyclogrammProgressBar->Location = System::Drawing::Point(6, 216);
-			this->CyclogrammProgressBar->Name = L"CyclogrammProgressBar";
-			this->CyclogrammProgressBar->Size = System::Drawing::Size(524, 23);
-			this->CyclogrammProgressBar->TabIndex = 13;
 			// 
 			// CyclogrammTextBox
 			// 
-			this->CyclogrammTextBox->Location = System::Drawing::Point(6, 245);
+			this->CyclogrammTextBox->Location = System::Drawing::Point(8, 302);
+			this->CyclogrammTextBox->Margin = System::Windows::Forms::Padding(4);
 			this->CyclogrammTextBox->Name = L"CyclogrammTextBox";
-			this->CyclogrammTextBox->Size = System::Drawing::Size(524, 309);
+			this->CyclogrammTextBox->Size = System::Drawing::Size(699, 379);
 			this->CyclogrammTextBox->TabIndex = 14;
 			this->CyclogrammTextBox->Text = L" ";
 			// 
 			// ClearCyclogrammButton
 			// 
-			this->ClearCyclogrammButton->Location = System::Drawing::Point(6, 187);
+			this->ClearCyclogrammButton->Location = System::Drawing::Point(8, 230);
+			this->ClearCyclogrammButton->Margin = System::Windows::Forms::Padding(4);
 			this->ClearCyclogrammButton->Name = L"ClearCyclogrammButton";
-			this->ClearCyclogrammButton->Size = System::Drawing::Size(75, 23);
+			this->ClearCyclogrammButton->Size = System::Drawing::Size(100, 28);
 			this->ClearCyclogrammButton->TabIndex = 15;
 			this->ClearCyclogrammButton->Text = L"Очистить";
 			this->ClearCyclogrammButton->UseVisualStyleBackColor = true;
 			this->ClearCyclogrammButton->Click += gcnew System::EventHandler(this, &WagnerForm::ClearCyclogrammButton_Click);
 			// 
+			// CyclogrammProgressBar
+			// 
+			this->CyclogrammProgressBar->CustomText = L"";
+			this->CyclogrammProgressBar->Location = System::Drawing::Point(8, 265);
+			this->CyclogrammProgressBar->Name = L"CyclogrammProgressBar";
+			this->CyclogrammProgressBar->ProgressColor = System::Drawing::Color::LightGreen;
+			this->CyclogrammProgressBar->Size = System::Drawing::Size(699, 30);
+			this->CyclogrammProgressBar->TabIndex = 16;
+			this->CyclogrammProgressBar->TextColor = System::Drawing::Color::Black;
+			this->CyclogrammProgressBar->TextFont = (gcnew System::Drawing::Font(L"Times New Roman", 11, static_cast<System::Drawing::FontStyle>((System::Drawing::FontStyle::Bold | System::Drawing::FontStyle::Italic))));
+			this->CyclogrammProgressBar->VisualMode = ProgressBarSample::ProgressBarDisplayMode::CurrProgress;
+			// 
 			// WagnerForm
 			// 
-			this->AutoScaleDimensions = System::Drawing::SizeF(6, 13);
+			this->AutoScaleDimensions = System::Drawing::SizeF(8, 16);
 			this->AutoScaleMode = System::Windows::Forms::AutoScaleMode::Font;
-			this->ClientSize = System::Drawing::Size(704, 557);
+			this->ClientSize = System::Drawing::Size(939, 686);
+			this->Controls->Add(this->CyclogrammProgressBar);
 			this->Controls->Add(this->ClearCyclogrammButton);
 			this->Controls->Add(this->CyclogrammTextBox);
-			this->Controls->Add(this->CyclogrammProgressBar);
 			this->Controls->Add(this->chatTextBox);
 			this->Controls->Add(this->CommandTB);
 			this->Controls->Add(this->CommandListBox);
@@ -228,6 +242,7 @@ namespace Wagner {
 			this->Controls->Add(this->PauseButton);
 			this->Controls->Add(this->ServerAdrress);
 			this->Icon = (cli::safe_cast<System::Drawing::Icon^>(resources->GetObject(L"$this.Icon")));
+			this->Margin = System::Windows::Forms::Padding(4);
 			this->Name = L"WagnerForm";
 			this->StartPosition = System::Windows::Forms::FormStartPosition::CenterScreen;
 			this->Text = L"Wagner";
