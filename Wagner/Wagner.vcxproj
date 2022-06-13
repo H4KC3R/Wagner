@@ -135,6 +135,9 @@
     <Reference Include="LastSummerSmile">
       <HintPath>libs\LastSummerSmile.dll</HintPath>
     </Reference>
+    <Reference Include="SuperSimpleTcp">
+      <HintPath>libs\SuperSimpleTcp.dll</HintPath>
+    </Reference>
     <Reference Include="System" />
     <Reference Include="System.Data" />
     <Reference Include="System.Drawing" />
@@ -142,12 +145,10 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="functionParser.cpp" />
     <ClCompile Include="main.cpp" />
     <ClCompile Include="WagnerForm.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="functionParser.h" />
     <ClInclude Include="resource.h" />
     <ClInclude Include="WagnerForm.h">
       <FileType>CppForm</FileType>
@@ -166,6 +167,9 @@
   </ItemGroup>
   <ItemGroup>
     <Image Include="resourses\music_conductor.ico" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="packages.config" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

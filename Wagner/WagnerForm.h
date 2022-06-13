@@ -1,20 +1,41 @@
 #pragma once
-#include "functionParser.h"
+#include <iostream>
+
+enum functionsNameEnum {
+	GET_POSITION = 0, 
+	MOVE_TO, 
+	PARKING,
+	GET_ERRORS,
+	RESER_ERRORS
+};
 
 namespace Wagner {
-
 	using namespace System;
 	using namespace System::ComponentModel;
 	using namespace System::Collections;
 	using namespace System::Windows::Forms;
 	using namespace System::Data;
 	using namespace System::Drawing;
+	using namespace SuperSimpleTcp;
+	using namespace System::Runtime::InteropServices;
+
 
 	/// <summary>
 	/// Summary for WagnerForm
 	/// </summary>
 	public ref class WagnerForm : public System::Windows::Forms::Form
-	{
+	{	
+
+	[StructLayout(LayoutKind::Sequential)]
+	ref struct  WagnerPacket {
+		uint8_t command;
+		[MarshalAs(UnmanagedType::U4)]
+		uint32_t data;
+	};
+
+	public:
+		SimpleTcpServer^ server;
+		delegate void Update(String^ msg);
 	public:
 		WagnerForm(void)
 		{
@@ -51,6 +72,8 @@ namespace Wagner {
 	private: System::Windows::Forms::RichTextBox^ CyclogrammTextBox;
 	private: System::Windows::Forms::Button^ ClearCyclogrammButton;
 	private: ProgressBarSample::TextProgressBar^ CyclogrammProgressBar;
+	private: System::ComponentModel::BackgroundWorker^ DoScriptWorker;
+
 
 
 
@@ -82,6 +105,7 @@ namespace Wagner {
 			this->CyclogrammTextBox = (gcnew System::Windows::Forms::RichTextBox());
 			this->ClearCyclogrammButton = (gcnew System::Windows::Forms::Button());
 			this->CyclogrammProgressBar = (gcnew ProgressBarSample::TextProgressBar());
+			this->DoScriptWorker = (gcnew System::ComponentModel::BackgroundWorker());
 			this->SuspendLayout();
 			// 
 			// ServerAdrress
@@ -225,6 +249,11 @@ namespace Wagner {
 			this->CyclogrammProgressBar->TextFont = (gcnew System::Drawing::Font(L"Times New Roman", 11, static_cast<System::Drawing::FontStyle>((System::Drawing::FontStyle::Bold | System::Drawing::FontStyle::Italic))));
 			this->CyclogrammProgressBar->VisualMode = ProgressBarSample::ProgressBarDisplayMode::CurrProgress;
 			// 
+			// DoScriptWorker
+			// 
+			this->DoScriptWorker->WorkerReportsProgress = true;
+			this->DoScriptWorker->WorkerSupportsCancellation = true;
+			// 
 			// WagnerForm
 			// 
 			this->AutoScaleDimensions = System::Drawing::SizeF(8, 16);
@@ -242,8 +271,10 @@ namespace Wagner {
 			this->Controls->Add(this->StopButton);
 			this->Controls->Add(this->PauseButton);
 			this->Controls->Add(this->ServerAdrress);
+			this->FormBorderStyle = System::Windows::Forms::FormBorderStyle::FixedSingle;
 			this->Icon = (cli::safe_cast<System::Drawing::Icon^>(resources->GetObject(L"$this.Icon")));
 			this->Margin = System::Windows::Forms::Padding(4);
+			this->MaximizeBox = false;
 			this->Name = L"WagnerForm";
 			this->StartPosition = System::Windows::Forms::FormStartPosition::CenterScreen;
 			this->Text = L"Wagner";
@@ -252,35 +283,42 @@ namespace Wagner {
 			this->PerformLayout();
 
 		}
+
 #pragma endregion
-	private: System::Void ExpandButton_Click(System::Object^ sender, System::EventArgs^ e) {
-		if (ExpandButton->Text == ">") {
-			this->Width = 720;
-			ExpandButton->Text = "<";
-		}
-		else {
-			this->Width = 575;
-			ExpandButton->Text = ">";
-		}
-	}
 
-private: System::Void StartButton_Click(System::Object^ sender, System::EventArgs^ e) {
-	getFuncName(CyclogrammTextBox->Lines[0]);
-}
+private: System::Void ExpandButton_Click(System::Object^ sender, System::EventArgs^ e);
 
-private: System::Void WagnerForm_Load(System::Object^ sender, System::EventArgs^ e) {
-	CyclogrammTextBox->AllowDrop = true;
-	CyclogrammTextBox->DragDrop += gcnew System::Windows::Forms::DragEventHandler(this, &Wagner::WagnerForm::OnDragDrop);
-	CyclogrammTextBox->Clear();
-}
+private: System::Void StartButton_Click(System::Object^ sender, System::EventArgs^ e);
 
-private: System::Void CommandListBox_MouseDoubleClick(System::Object^ sender, System::Windows::Forms::MouseEventArgs^ e) {
-	CyclogrammTextBox->Text += CommandListBox->SelectedItem->ToString() + "()" + "\r\n";
-}
+private: System::Void WagnerForm_Load(System::Object^ sender, System::EventArgs^ e);
+
+private: System::Void CommandListBox_MouseDoubleClick(System::Object^ sender, System::Windows::Forms::MouseEventArgs^ e);
+
 	   void OnDragDrop(System::Object^ sender, System::Windows::Forms::DragEventArgs^ e);
 
-private: System::Void ClearCyclogrammButton_Click(System::Object^ sender, System::EventArgs^ e) {
-	CyclogrammTextBox->Clear();
-}
+private: System::Void ClearCyclogrammButton_Click(System::Object^ sender, System::EventArgs^ e);
+
+
+	   void UpdateChatBox(String^ text);
+	   void UpdateClientConnected(String^ ip);
+	   void UpdateClientDisconnected(String^ ip);
+
+	   void OnClientConnected(System::Object^ sender, SuperSimpleTcp::ConnectionEventArgs^ e);
+	   void OnClientDisconnected(System::Object^ sender, SuperSimpleTcp::ConnectionEventArgs^ e);
+	   void OnDataReceived(System::Object^ sender, SuperSimpleTcp::DataReceivedEventArgs^ e);
+
+#pragma region MarshallingPackets
+
+	   array<Byte>^ getBytes(WagnerPacket^ packet);
+
+	   WagnerPacket^ fromBytes(array<Byte>^ arr);
+
+#pragma endregion
+
+
+	   void doFunction();
+
+	   void lexicalAnalyzer();
+
 };
 }
