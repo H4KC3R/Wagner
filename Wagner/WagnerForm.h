@@ -1,4 +1,5 @@
 #pragma once
+#include "functionParser.h"
 
 namespace Wagner {
 
@@ -264,7 +265,7 @@ namespace Wagner {
 	}
 
 private: System::Void StartButton_Click(System::Object^ sender, System::EventArgs^ e) {
-	CyclogrammProgressBar->Increment(20);
+	getFuncName(CyclogrammTextBox->Lines[0]);
 }
 
 private: System::Void WagnerForm_Load(System::Object^ sender, System::EventArgs^ e) {
