@@ -1,13 +1,5 @@
 #pragma once
-#include <iostream>
-
-enum functionsNameEnum {
-	GET_POSITION = 0, 
-	MOVE_TO, 
-	PARKING,
-	GET_ERRORS,
-	RESER_ERRORS
-};
+#include <map>
 
 namespace Wagner {
 	using namespace System;
@@ -16,6 +8,7 @@ namespace Wagner {
 	using namespace System::Windows::Forms;
 	using namespace System::Data;
 	using namespace System::Drawing;
+	using namespace System::Collections::Generic;
 	using namespace SuperSimpleTcp;
 	using namespace System::Runtime::InteropServices;
 
@@ -34,6 +27,8 @@ namespace Wagner {
 	};
 
 	public:
+
+		Dictionary<String^, uint8_t>^ funcDictionary = gcnew Dictionary<String^, uint8_t>();
 		SimpleTcpServer^ server;
 		delegate void Update(String^ msg);
 	public:
@@ -315,10 +310,13 @@ private: System::Void ClearCyclogrammButton_Click(System::Object^ sender, System
 
 #pragma endregion
 
+	   String^ getFunctionFromString(String^ s);
 
-	   void doFunction();
+	   void getArgsFromString(String^ s);
 
-	   void lexicalAnalyzer();
+	   void doFunction(uint8_t func, uint32_t dataToSend);
+
+	   void functionParser(String^ s);
 
 };
 }

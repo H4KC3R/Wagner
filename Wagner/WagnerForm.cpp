@@ -27,6 +27,11 @@ System::Void Wagner::WagnerForm::WagnerForm_Load(System::Object^ sender, System:
 	server->Start();
 	chatTextBox->Text += "Запуск....\r\n";
 
+	funcDictionary->Add("getPosition", 0);
+	funcDictionary->Add("moveTo", 1);
+	funcDictionary->Add("parking", 2);
+	funcDictionary->Add("getErrors", 3);
+	funcDictionary->Add("resetErrors", 4);
 }
 
 System::Void Wagner::WagnerForm::CommandListBox_MouseDoubleClick(System::Object^ sender, System::Windows::Forms::MouseEventArgs^ e) {
@@ -103,13 +108,30 @@ Wagner::WagnerForm::WagnerPacket^ Wagner::WagnerForm::fromBytes(array<Byte>^ arr
 
 #pragma endregion
 
+System::String^ Wagner::WagnerForm::getFunctionFromString(String^ s) {
+	int charLocation = s->IndexOf("(", StringComparison::Ordinal);
+	if (charLocation > 0) {
+		return s->Substring(0, charLocation);
+	}
+	return String::Empty;
+}
 
-void Wagner::WagnerForm::doFunction() {
+void Wagner::WagnerForm::getArgsFromString(String^ s) {
+	return;
+}
+
+
+void Wagner::WagnerForm::doFunction(uint8_t func, uint32_t dataToSend) {
 	WagnerPacket^ packet1 = gcnew WagnerPacket();
-	packet1->command = GET_ERRORS;
-	packet1->data = 0;
+	packet1->command = func;
+	packet1->data = dataToSend;
 	
 	auto message = getBytes(packet1);
 	server->Send(clientsListBox->SelectedItem->ToString(), message);
 }
 
+
+void Wagner::WagnerForm::functionParser(String^ s) {
+	String^ funcName = getFunctionFromString(s);
+	funcDictionary->ContainsKey(funcName);
+}
