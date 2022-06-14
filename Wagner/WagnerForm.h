@@ -58,20 +58,13 @@ namespace Wagner {
 	private: System::Windows::Forms::Button^ StartButton;
 	private: System::Windows::Forms::Button^ ExpandButton;
 	private: System::Windows::Forms::ListBox^ clientsListBox;
-
 	private: System::Windows::Forms::ListBox^ CommandListBox;
 	private: System::Windows::Forms::TextBox^ CommandTB;
 	private: System::Windows::Forms::TextBox^ chatTextBox;
-
-
 	private: System::Windows::Forms::RichTextBox^ CyclogrammTextBox;
 	private: System::Windows::Forms::Button^ ClearCyclogrammButton;
 	private: ProgressBarSample::TextProgressBar^ CyclogrammProgressBar;
 	private: System::ComponentModel::BackgroundWorker^ DoScriptWorker;
-
-
-
-
 	protected:
 
 	private:
@@ -312,11 +305,11 @@ private: System::Void ClearCyclogrammButton_Click(System::Object^ sender, System
 
 	   String^ getFunctionFromString(String^ s);
 
-	   void getArgsFromString(String^ s);
+	   List<uint32_t>^ getArgsFromString(String^ s);
 
 	   void doFunction(uint8_t func, uint32_t dataToSend);
 
-	   void functionParser(String^ s);
+	   bool functionParser(String^ s);
 
 };
 }

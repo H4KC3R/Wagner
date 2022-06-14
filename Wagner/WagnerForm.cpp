@@ -12,7 +12,8 @@ System::Void Wagner::WagnerForm::ExpandButton_Click(System::Object^ sender, Syst
 }
 
 System::Void Wagner::WagnerForm::StartButton_Click(System::Object^ sender, System::EventArgs^ e) {
-	return;
+	Console::WriteLine(getArgsFromString(CyclogrammTextBox->Lines[0])->Count);
+
 }
 
 System::Void Wagner::WagnerForm::WagnerForm_Load(System::Object^ sender, System::EventArgs^ e) {
@@ -116,22 +117,47 @@ System::String^ Wagner::WagnerForm::getFunctionFromString(String^ s) {
 	return String::Empty;
 }
 
-void Wagner::WagnerForm::getArgsFromString(String^ s) {
-	return;
+System::Collections::Generic::List<uint32_t>^ Wagner::WagnerForm::getArgsFromString(String^ s) {
+	List<uint32_t>^ args = gcnew List<uint32_t>();
+	int Pos1 = s->IndexOf("(") + 1;
+	int Pos2 = s->IndexOf(")");
+	if ((Pos2 - Pos1) == 0) {
+		return args;
+	}
+	auto args_string = (s->Substring(Pos1, Pos2 - Pos1))->Split(',');
+	for each (String ^ temp in args_string) {
+		uint32_t num;
+		if (System::UInt32::TryParse(temp, num))
+			args->Add(num);
+	}
+	return args;
 }
 
 
 void Wagner::WagnerForm::doFunction(uint8_t func, uint32_t dataToSend) {
-	WagnerPacket^ packet1 = gcnew WagnerPacket();
-	packet1->command = func;
-	packet1->data = dataToSend;
+	WagnerPacket^ packet = gcnew WagnerPacket();
+	packet->command = func;
+	packet->data = dataToSend;
 	
-	auto message = getBytes(packet1);
+	auto message = getBytes(packet);
 	server->Send(clientsListBox->SelectedItem->ToString(), message);
 }
 
 
-void Wagner::WagnerForm::functionParser(String^ s) {
+bool Wagner::WagnerForm::functionParser(String^ s) {
+	bool isCorrectName = false;
+	bool isCorrectArgs = false;
 	String^ funcName = getFunctionFromString(s);
-	funcDictionary->ContainsKey(funcName);
+	if (String::IsNullOrEmpty(funcName))
+		return false;	
+	
+	if (funcDictionary->ContainsKey(funcName))
+		isCorrectName = true;
+	
+	auto args = getArgsFromString(s);
+	if (funcName == "getPosition" && args->Count == 1)
+		isCorrectArgs = true;
+	else if (isCorrectName && funcName != "getPosition" && args->Count == 0)
+		isCorrectArgs = true;
+	return (isCorrectName && isCorrectArgs);
 }
