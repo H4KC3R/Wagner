@@ -168,7 +168,7 @@ namespace Wagner {
 			this->CommandListBox->FormattingEnabled = true;
 			this->CommandListBox->ItemHeight = 16;
 			this->CommandListBox->Items->AddRange(gcnew cli::array< System::Object^  >(5) {
-				L"getPosition", L"moveTo", L"parking", L"getErrors",
+				L"getPosition", L"moveTo", L"park", L"getErrors",
 					L"resetErrors"
 			});
 			this->CommandListBox->Location = System::Drawing::Point(748, 50);
@@ -213,6 +213,7 @@ namespace Wagner {
 			this->CyclogrammTextBox->Size = System::Drawing::Size(699, 379);
 			this->CyclogrammTextBox->TabIndex = 14;
 			this->CyclogrammTextBox->Text = L" ";
+			this->CyclogrammTextBox->Validating += gcnew System::ComponentModel::CancelEventHandler(this, &WagnerForm::CyclogrammTextBox_Validating);
 			// 
 			// ClearCyclogrammButton
 			// 
@@ -234,7 +235,7 @@ namespace Wagner {
 			this->CyclogrammProgressBar->Size = System::Drawing::Size(699, 30);
 			this->CyclogrammProgressBar->TabIndex = 16;
 			this->CyclogrammProgressBar->TextColor = System::Drawing::Color::Black;
-			this->CyclogrammProgressBar->TextFont = (gcnew System::Drawing::Font(L"Times New Roman", 11, static_cast<System::Drawing::FontStyle>((System::Drawing::FontStyle::Bold | System::Drawing::FontStyle::Italic))));
+			this->CyclogrammProgressBar->TextFont = (gcnew System::Drawing::Font(L"Times New Roman", 11, System::Drawing::FontStyle::Bold));
 			this->CyclogrammProgressBar->VisualMode = ProgressBarSample::ProgressBarDisplayMode::CurrProgress;
 			// 
 			// DoScriptWorker
@@ -286,6 +287,7 @@ private: System::Void CommandListBox_MouseDoubleClick(System::Object^ sender, Sy
 
 private: System::Void ClearCyclogrammButton_Click(System::Object^ sender, System::EventArgs^ e);
 
+#pragma region Server
 
 	   void UpdateChatBox(String^ text);
 	   void UpdateClientConnected(String^ ip);
@@ -295,6 +297,8 @@ private: System::Void ClearCyclogrammButton_Click(System::Object^ sender, System
 	   void OnClientDisconnected(System::Object^ sender, SuperSimpleTcp::ConnectionEventArgs^ e);
 	   void OnDataReceived(System::Object^ sender, SuperSimpleTcp::DataReceivedEventArgs^ e);
 
+#pragma endregion
+
 #pragma region MarshallingPackets
 
 	   array<Byte>^ getBytes(WagnerPacket^ packet);
@@ -303,13 +307,24 @@ private: System::Void ClearCyclogrammButton_Click(System::Object^ sender, System
 
 #pragma endregion
 
+#pragma region ValidateTextBox
+
 	   String^ getFunctionFromString(String^ s);
 
 	   List<uint32_t>^ getArgsFromString(String^ s);
 
+	   bool functionParser(String^ s);
+
+private: System::Void CyclogrammTextBox_Validating(System::Object^ sender, System::ComponentModel::CancelEventArgs^ e);
+
+	   void ValidateText();
+
+#pragma endregion
+
+
 	   void doFunction(uint8_t func, uint32_t dataToSend);
 
-	   bool functionParser(String^ s);
+
 
 };
 }

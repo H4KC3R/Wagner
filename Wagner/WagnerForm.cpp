@@ -12,6 +12,8 @@ System::Void Wagner::WagnerForm::ExpandButton_Click(System::Object^ sender, Syst
 }
 
 System::Void Wagner::WagnerForm::StartButton_Click(System::Object^ sender, System::EventArgs^ e) {
+	if (CyclogrammTextBox->Text->Length == 0)
+		return;
 	Console::WriteLine(getArgsFromString(CyclogrammTextBox->Lines[0])->Count);
 
 }
@@ -30,13 +32,14 @@ System::Void Wagner::WagnerForm::WagnerForm_Load(System::Object^ sender, System:
 
 	funcDictionary->Add("getPosition", 0);
 	funcDictionary->Add("moveTo", 1);
-	funcDictionary->Add("parking", 2);
+	funcDictionary->Add("park", 2);
 	funcDictionary->Add("getErrors", 3);
 	funcDictionary->Add("resetErrors", 4);
 }
 
 System::Void Wagner::WagnerForm::CommandListBox_MouseDoubleClick(System::Object^ sender, System::Windows::Forms::MouseEventArgs^ e) {
 	CyclogrammTextBox->Text += CommandListBox->SelectedItem->ToString() + "()" + "\r\n";
+	ValidateText();
 }
 
 void Wagner::WagnerForm::OnDragDrop(System::Object^ sender, System::Windows::Forms::DragEventArgs^ e) {
@@ -45,11 +48,14 @@ void Wagner::WagnerForm::OnDragDrop(System::Object^ sender, System::Windows::For
 		String^ ext = System::IO::Path::GetExtension(path)->ToLower();
 		if (ext == ".txt") CyclogrammTextBox->AppendText(System::IO::File::ReadAllText(path));
 	}
+	ValidateText();
 }
 
 System::Void Wagner::WagnerForm::ClearCyclogrammButton_Click(System::Object^ sender, System::EventArgs^ e) {
 	CyclogrammTextBox->Clear();
 }
+
+#pragma region Server
 
 void Wagner::WagnerForm::UpdateChatBox(String^ text) {
 	chatTextBox->Text += text;
@@ -80,6 +86,8 @@ void Wagner::WagnerForm::OnDataReceived(System::Object^ sender, SuperSimpleTcp::
 	return;
 }
 
+#pragma endregion
+
 #pragma region MarshallingPackets
 
 array<System::Byte>^ Wagner::WagnerForm::getBytes(WagnerPacket^ packet) {
@@ -109,6 +117,8 @@ Wagner::WagnerForm::WagnerPacket^ Wagner::WagnerForm::fromBytes(array<Byte>^ arr
 
 #pragma endregion
 
+#pragma region ValidateTextBox
+
 System::String^ Wagner::WagnerForm::getFunctionFromString(String^ s) {
 	int charLocation = s->IndexOf("(", StringComparison::Ordinal);
 	if (charLocation > 0) {
@@ -133,17 +143,6 @@ System::Collections::Generic::List<uint32_t>^ Wagner::WagnerForm::getArgsFromStr
 	return args;
 }
 
-
-void Wagner::WagnerForm::doFunction(uint8_t func, uint32_t dataToSend) {
-	WagnerPacket^ packet = gcnew WagnerPacket();
-	packet->command = func;
-	packet->data = dataToSend;
-	
-	auto message = getBytes(packet);
-	server->Send(clientsListBox->SelectedItem->ToString(), message);
-}
-
-
 bool Wagner::WagnerForm::functionParser(String^ s) {
 	bool isCorrectName = false;
 	bool isCorrectArgs = false;
@@ -161,3 +160,37 @@ bool Wagner::WagnerForm::functionParser(String^ s) {
 		isCorrectArgs = true;
 	return (isCorrectName && isCorrectArgs);
 }
+
+System::Void Wagner::WagnerForm::CyclogrammTextBox_Validating(System::Object^ sender, System::ComponentModel::CancelEventArgs^ e) {
+	ValidateText();
+}
+
+void Wagner::WagnerForm::ValidateText() {
+	System::Windows::Forms::Cursor::Current = System::Windows::Forms::Cursors::WaitCursor;
+	auto textLines = CyclogrammTextBox->Text->Split('\n');
+	for (int i = 0; i < textLines->Length; i++) {
+		if (String::IsNullOrEmpty(textLines[i]))
+			continue;
+		if (!functionParser(textLines[i])) {
+			int start = CyclogrammTextBox->GetFirstCharIndexFromLine(i);
+			int length = CyclogrammTextBox->Lines[i]->Length;
+			CyclogrammTextBox->Select(start, length);
+			CyclogrammTextBox->SelectionFont = gcnew System::Drawing::Font(CyclogrammTextBox->SelectionFont, FontStyle::Underline);
+			CyclogrammTextBox->SelectionColor = Color::Navy;
+		}
+	}
+	System::Windows::Forms::Cursor::Current = System::Windows::Forms::Cursors::Default;
+}
+
+#pragma endregion
+
+void Wagner::WagnerForm::doFunction(uint8_t func, uint32_t dataToSend) {
+	WagnerPacket^ packet = gcnew WagnerPacket();
+	packet->command = func;
+	packet->data = dataToSend;
+	
+	auto message = getBytes(packet);
+	server->Send(clientsListBox->SelectedItem->ToString(), message);
+}
+
+
