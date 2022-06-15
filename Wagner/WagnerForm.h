@@ -27,7 +27,7 @@ namespace Wagner {
 	};
 
 	public:
-
+		bool isScriptValid = false;
 		Dictionary<String^, uint8_t>^ funcDictionary = gcnew Dictionary<String^, uint8_t>();
 		SimpleTcpServer^ server;
 		delegate void Update(String^ msg);
@@ -133,6 +133,7 @@ namespace Wagner {
 			// 
 			// StartButton
 			// 
+			this->StartButton->ImageAlign = System::Drawing::ContentAlignment::MiddleLeft;
 			this->StartButton->Location = System::Drawing::Point(8, 12);
 			this->StartButton->Margin = System::Windows::Forms::Padding(4);
 			this->StartButton->Name = L"StartButton";
@@ -213,7 +214,7 @@ namespace Wagner {
 			this->CyclogrammTextBox->Size = System::Drawing::Size(699, 379);
 			this->CyclogrammTextBox->TabIndex = 14;
 			this->CyclogrammTextBox->Text = L" ";
-			this->CyclogrammTextBox->Validating += gcnew System::ComponentModel::CancelEventHandler(this, &WagnerForm::CyclogrammTextBox_Validating);
+			this->CyclogrammTextBox->Leave += gcnew System::EventHandler(this, &WagnerForm::CyclogrammTextBox_Leave);
 			// 
 			// ClearCyclogrammButton
 			// 
@@ -315,16 +316,13 @@ private: System::Void ClearCyclogrammButton_Click(System::Object^ sender, System
 
 	   bool functionParser(String^ s);
 
-private: System::Void CyclogrammTextBox_Validating(System::Object^ sender, System::ComponentModel::CancelEventArgs^ e);
+private: System::Void CyclogrammTextBox_Leave(System::Object^ sender, System::EventArgs^ e);
 
 	   void ValidateText();
 
 #pragma endregion
 
-
 	   void doFunction(uint8_t func, uint32_t dataToSend);
-
-
 
 };
 }

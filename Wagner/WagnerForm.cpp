@@ -14,8 +14,9 @@ System::Void Wagner::WagnerForm::ExpandButton_Click(System::Object^ sender, Syst
 System::Void Wagner::WagnerForm::StartButton_Click(System::Object^ sender, System::EventArgs^ e) {
 	if (CyclogrammTextBox->Text->Length == 0)
 		return;
-	Console::WriteLine(getArgsFromString(CyclogrammTextBox->Lines[0])->Count);
-
+	if (!isScriptValid)
+		return;
+	Console::WriteLine("i am here");
 }
 
 System::Void Wagner::WagnerForm::WagnerForm_Load(System::Object^ sender, System::EventArgs^ e) {
@@ -131,7 +132,7 @@ System::Collections::Generic::List<uint32_t>^ Wagner::WagnerForm::getArgsFromStr
 	List<uint32_t>^ args = gcnew List<uint32_t>();
 	int Pos1 = s->IndexOf("(") + 1;
 	int Pos2 = s->IndexOf(")");
-	if ((Pos2 - Pos1) == 0) {
+	if ((Pos2 - Pos1) <= 0) {
 		return args;
 	}
 	auto args_string = (s->Substring(Pos1, Pos2 - Pos1))->Split(',');
@@ -146,6 +147,11 @@ System::Collections::Generic::List<uint32_t>^ Wagner::WagnerForm::getArgsFromStr
 bool Wagner::WagnerForm::functionParser(String^ s) {
 	bool isCorrectName = false;
 	bool isCorrectArgs = false;
+	int startOfArgs = s->IndexOf("(") + 1;
+	int endOfArgs = s->IndexOf(")");
+	if (s->Length - endOfArgs != 1)
+		return false;
+
 	String^ funcName = getFunctionFromString(s);
 	if (String::IsNullOrEmpty(funcName))
 		return false;	
@@ -154,32 +160,38 @@ bool Wagner::WagnerForm::functionParser(String^ s) {
 		isCorrectName = true;
 	
 	auto args = getArgsFromString(s);
-	if (funcName == "getPosition" && args->Count == 1)
+	if (funcName == "moveTo" && args->Count == 1)
 		isCorrectArgs = true;
-	else if (isCorrectName && funcName != "getPosition" && args->Count == 0)
+	else if (isCorrectName && funcName != "moveTo" && (endOfArgs - startOfArgs) == 0)
 		isCorrectArgs = true;
 	return (isCorrectName && isCorrectArgs);
-}
-
-System::Void Wagner::WagnerForm::CyclogrammTextBox_Validating(System::Object^ sender, System::ComponentModel::CancelEventArgs^ e) {
-	ValidateText();
 }
 
 void Wagner::WagnerForm::ValidateText() {
 	System::Windows::Forms::Cursor::Current = System::Windows::Forms::Cursors::WaitCursor;
 	auto textLines = CyclogrammTextBox->Text->Split('\n');
+	isScriptValid = true;
 	for (int i = 0; i < textLines->Length; i++) {
 		if (String::IsNullOrEmpty(textLines[i]))
 			continue;
+		int start = CyclogrammTextBox->GetFirstCharIndexFromLine(i);
+		int length = CyclogrammTextBox->Lines[i]->Length;
+		CyclogrammTextBox->Select(start, length);
 		if (!functionParser(textLines[i])) {
-			int start = CyclogrammTextBox->GetFirstCharIndexFromLine(i);
-			int length = CyclogrammTextBox->Lines[i]->Length;
-			CyclogrammTextBox->Select(start, length);
 			CyclogrammTextBox->SelectionFont = gcnew System::Drawing::Font(CyclogrammTextBox->SelectionFont, FontStyle::Underline);
-			CyclogrammTextBox->SelectionColor = Color::Navy;
+			CyclogrammTextBox->SelectionColor = Color::DarkBlue;
+			isScriptValid = false;
+		}
+		else {
+			CyclogrammTextBox->SelectionFont = gcnew System::Drawing::Font(CyclogrammTextBox->SelectionFont, FontStyle::Regular);
+			CyclogrammTextBox->SelectionColor = Color::Black;
 		}
 	}
 	System::Windows::Forms::Cursor::Current = System::Windows::Forms::Cursors::Default;
+}
+
+System::Void Wagner::WagnerForm::CyclogrammTextBox_Leave(System::Object^ sender, System::EventArgs^ e) {
+	ValidateText();
 }
 
 #pragma endregion
