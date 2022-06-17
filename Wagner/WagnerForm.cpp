@@ -169,6 +169,7 @@ bool Wagner::WagnerForm::functionParser(String^ s) {
 
 void Wagner::WagnerForm::ValidateText() {
 	System::Windows::Forms::Cursor::Current = System::Windows::Forms::Cursors::WaitCursor;
+
 	auto textLines = CyclogrammTextBox->Text->Split('\n');
 	isScriptValid = true;
 	for (int i = 0; i < textLines->Length; i++) {
@@ -198,6 +199,7 @@ System::Void Wagner::WagnerForm::CyclogrammTextBox_Leave(System::Object^ sender,
 
 void Wagner::WagnerForm::doFunction(uint8_t func, uint32_t dataToSend) {
 	WagnerPacket^ packet = gcnew WagnerPacket();
+
 	packet->command = func;
 	packet->data = dataToSend;
 	
