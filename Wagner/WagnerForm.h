@@ -1,5 +1,14 @@
 #pragma once
-#include <map>
+#include <iostream>
+
+enum Commands {
+	WHO_ARE_YOU = 0,
+	GET_POSITION,
+	MOVE_TO,
+	PARK,
+	GET_ERRORS,
+	RESET_ERRORS
+};
 
 namespace Wagner {
 	using namespace System;
@@ -29,6 +38,7 @@ namespace Wagner {
 	public:
 		bool isScriptValid = false;
 		Dictionary<String^, uint8_t>^ funcDictionary = gcnew Dictionary<String^, uint8_t>();
+		Dictionary<String^, String^>^ clientsDictionary = gcnew Dictionary<String^, String^>();
 		SimpleTcpServer^ server;
 		delegate void Update(String^ msg);
 	public:
@@ -279,9 +289,9 @@ private: System::Void WagnerForm_Load(System::Object^ sender, System::EventArgs^
 
 private: System::Void CommandListBox_MouseDoubleClick(System::Object^ sender, System::Windows::Forms::MouseEventArgs^ e);
 
-	   void OnDragDrop(System::Object^ sender, System::Windows::Forms::DragEventArgs^ e);
-
 private: System::Void ClearCyclogrammButton_Click(System::Object^ sender, System::EventArgs^ e);
+
+	   void OnDragDrop(System::Object^ sender, System::Windows::Forms::DragEventArgs^ e);
 
 #pragma region Server
 
@@ -305,19 +315,24 @@ private: System::Void ClearCyclogrammButton_Click(System::Object^ sender, System
 
 #pragma region ValidateTextBox
 
+private: System::Void CyclogrammTextBox_Leave(System::Object^ sender, System::EventArgs^ e);
+
 	   String^ getFunctionFromString(String^ s);
 
 	   List<uint32_t>^ getArgsFromString(String^ s);
 
 	   bool functionParser(String^ s);
 
-private: System::Void CyclogrammTextBox_Leave(System::Object^ sender, System::EventArgs^ e);
-
 	   void ValidateText();
 
 #pragma endregion
 
-	   void doFunction(uint8_t func, uint32_t dataToSend);
+#pragma region PacketService
 
+	   void sendPacket(uint8_t func, uint32_t dataToSend);
+
+	   WagnerPacket^ parsePacket();
+
+#pragma endregion
 };
 }

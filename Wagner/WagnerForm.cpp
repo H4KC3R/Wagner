@@ -16,7 +16,9 @@ System::Void Wagner::WagnerForm::StartButton_Click(System::Object^ sender, Syste
 		return;
 	if (!isScriptValid)
 		return;
-	Console::WriteLine("i am here");
+
+
+
 }
 
 System::Void Wagner::WagnerForm::WagnerForm_Load(System::Object^ sender, System::EventArgs^ e) {
@@ -31,11 +33,11 @@ System::Void Wagner::WagnerForm::WagnerForm_Load(System::Object^ sender, System:
 	server->Start();
 	chatTextBox->Text += "Запуск....\r\n";
 
-	funcDictionary->Add("getPosition", 0);
-	funcDictionary->Add("moveTo", 1);
-	funcDictionary->Add("park", 2);
-	funcDictionary->Add("getErrors", 3);
-	funcDictionary->Add("resetErrors", 4);
+	funcDictionary->Add("getPosition", GET_POSITION);
+	funcDictionary->Add("moveTo", MOVE_TO);
+	funcDictionary->Add("park", PARK);
+	funcDictionary->Add("getErrors", GET_ERRORS);
+	funcDictionary->Add("resetErrors", RESET_ERRORS);
 }
 
 System::Void Wagner::WagnerForm::CommandListBox_MouseDoubleClick(System::Object^ sender, System::Windows::Forms::MouseEventArgs^ e) {
@@ -74,6 +76,7 @@ void Wagner::WagnerForm::UpdateClientDisconnected(String^ ip) {
 }
 
 void Wagner::WagnerForm::OnClientConnected(System::Object^ sender, SuperSimpleTcp::ConnectionEventArgs^ e) {
+	sendPacket(WHO_ARE_YOU, 0);
 	Update^ action = gcnew Wagner::WagnerForm::Update(this, &Wagner::WagnerForm::UpdateClientConnected);
 	this->Invoke(action, e->IpPort);
 }
@@ -84,6 +87,7 @@ void Wagner::WagnerForm::OnClientDisconnected(System::Object^ sender, SuperSimpl
 }
 
 void Wagner::WagnerForm::OnDataReceived(System::Object^ sender, SuperSimpleTcp::DataReceivedEventArgs^ e) {
+
 	return;
 }
 
@@ -197,7 +201,7 @@ System::Void Wagner::WagnerForm::CyclogrammTextBox_Leave(System::Object^ sender,
 
 #pragma endregion
 
-void Wagner::WagnerForm::doFunction(uint8_t func, uint32_t dataToSend) {
+void Wagner::WagnerForm::sendPacket(uint8_t func, uint32_t dataToSend) {
 	WagnerPacket^ packet = gcnew WagnerPacket();
 
 	packet->command = func;
@@ -206,5 +210,3 @@ void Wagner::WagnerForm::doFunction(uint8_t func, uint32_t dataToSend) {
 	auto message = getBytes(packet);
 	server->Send(clientsListBox->SelectedItem->ToString(), message);
 }
-
-
