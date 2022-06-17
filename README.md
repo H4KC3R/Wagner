@@ -1,4 +1,4 @@
 # Wagner
 
 ## Протокол общения
-![Alt]WagnerPackets.svg
+<img src="WagnerPackets.svg"> 
