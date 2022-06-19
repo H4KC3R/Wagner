@@ -36,6 +36,7 @@ namespace Wagner {
 	};
 
 	public:
+		String^ client;
 		bool isScriptValid = false;
 		Dictionary<String^, uint8_t>^ funcDictionary = gcnew Dictionary<String^, uint8_t>();
 		Dictionary<String^, String^>^ clientsDictionary = gcnew Dictionary<String^, String^>();
@@ -339,7 +340,7 @@ private: System::Void ClearCyclogrammButton_Click(System::Object^ sender, System
 
 #pragma region MarshallingPackets
 
-	   cli::array<unsigned char, 1>^ getBytes(WagnerPacket^ packet);
+	   cli::array<Byte, 1>^ getBytes(WagnerPacket^ packet);
 
 	   WagnerPacket^ fromBytes(array<Byte>^ arr);
 
