@@ -12,8 +12,12 @@ System::Void Wagner::WagnerForm::ExpandButton_Click(System::Object^ sender, Syst
 }
 
 System::Void Wagner::WagnerForm::StartButton_Click(System::Object^ sender, System::EventArgs^ e) {
+
 	StartButton->Enabled = false;
-	server->SendAndWait(5000, client, "HAizenber", nullptr);
+	server->Send(client, "HAizenber", nullptr);
+
+	//SyncResponse^ resp = server->SendAndWait(5000, client, "HAizenber", nullptr);
+	//Console::WriteLine(System::Text::Encoding::UTF8->GetString(resp->Data));
 	StartButton->Enabled = true;
 
 	//if (CyclogrammTextBox->Text->Length == 0)

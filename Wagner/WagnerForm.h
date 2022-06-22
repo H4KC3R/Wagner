@@ -368,6 +368,7 @@ private: System::Void CyclogrammTextBox_Leave(System::Object^ sender, System::Ev
 		   return nullptr;
 	   }
 
+
 #pragma endregion
 
 };
