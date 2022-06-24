@@ -19,6 +19,7 @@ namespace Wagner {
 	using namespace System::Drawing;
 	using namespace System::Collections::Generic;
 	using namespace WatsonTcp;
+	using namespace CavemanTcp;
 	using namespace System::Runtime::InteropServices;
 
 
@@ -42,7 +43,9 @@ namespace Wagner {
 		Dictionary<String^, String^>^ clientsDictionary = gcnew Dictionary<String^, String^>();
 	private: System::Windows::Forms::TextBox^ textBox1;
 	public:
-		WatsonTcpServer^ server;
+		CavemanTcpServer^ server1;
+
+		//WatsonTcpServer^ server;
 		delegate void Update(String^ msg);
 	public:
 		WagnerForm(void)
@@ -330,8 +333,8 @@ private: System::Void ClearCyclogrammButton_Click(System::Object^ sender, System
 	   void UpdateClientConnected(String^ text);
 	   void UpdateClientDisconnected(String^ text);
 
-	   void OnClientConnected(System::Object^ sender, WatsonTcp::ConnectionEventArgs^ e);
-	   void OnClientDisconnected(System::Object^ sender, WatsonTcp::DisconnectionEventArgs^ e);
+	   //void OnClientConnected(System::Object^ sender, WatsonTcp::ConnectionEventArgs^ e);
+	   //void OnClientDisconnected(System::Object^ sender, WatsonTcp::DisconnectionEventArgs^ e);
 	   void OnMessageReceived(System::Object^ sender, WatsonTcp::MessageReceivedEventArgs^ e);
 
 	   SyncResponse^ SyncRequestReceived(SyncRequest^ req);
@@ -362,7 +365,7 @@ private: System::Void CyclogrammTextBox_Leave(System::Object^ sender, System::Ev
 
 #pragma region PacketService
 
-	   void sendPacket(String^ ipPort,uint8_t func, uint32_t dataToSend);
+	   //void sendPacket(String^ ipPort,uint8_t func, uint32_t dataToSend);
 
 	   WagnerPacket^ parsePacket() {
 		   return nullptr;
@@ -371,5 +374,7 @@ private: System::Void CyclogrammTextBox_Leave(System::Object^ sender, System::Ev
 
 #pragma endregion
 
+	   void OnClientConnected(System::Object^ sender, CavemanTcp::ClientConnectedEventArgs^ e);
+	   void OnClientDisconnected(System::Object^ sender, CavemanTcp::ClientDisconnectedEventArgs^ e);
 };
 }

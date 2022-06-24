@@ -12,13 +12,20 @@ System::Void Wagner::WagnerForm::ExpandButton_Click(System::Object^ sender, Syst
 }
 
 System::Void Wagner::WagnerForm::StartButton_Click(System::Object^ sender, System::EventArgs^ e) {
+	WagnerPacket^ rx = gcnew WagnerPacket();
+	int size = Marshal::SizeOf(rx);
 
-	StartButton->Enabled = false;
-	server->Send(client, "HAizenber", nullptr);
 
-	//SyncResponse^ resp = server->SendAndWait(5000, client, "HAizenber", nullptr);
-	//Console::WriteLine(System::Text::Encoding::UTF8->GetString(resp->Data));
-	StartButton->Enabled = true;
+	this->Enabled = false;
+	server1->Send(client, "hauze");
+	server1->ReadWithTimeout(10000, client, size);
+	this->Enabled = true;
+	//StartButton->Enabled = false;
+	//server->Send(client, "HAizenber", nullptr);
+
+	////SyncResponse^ resp = server->SendAndWait(5000, client, "HAizenber", nullptr);
+	////Console::WriteLine(System::Text::Encoding::UTF8->GetString(resp->Data));
+	//StartButton->Enabled = true;
 
 	//if (CyclogrammTextBox->Text->Length == 0)
 	//	return;
@@ -31,15 +38,19 @@ System::Void Wagner::WagnerForm::WagnerForm_Load(System::Object^ sender, System:
 	CyclogrammTextBox->DragDrop += gcnew System::Windows::Forms::DragEventHandler(this, &Wagner::WagnerForm::OnDragDrop);
 	CyclogrammTextBox->Clear();
 
-	server = gcnew WatsonTcpServer(ServerAddress->Text, 9000);
-	server->Events->ClientConnected += gcnew System::EventHandler<WatsonTcp::ConnectionEventArgs^>(this, &Wagner::WagnerForm::OnClientConnected);
-	server->Events->ClientDisconnected += gcnew System::EventHandler<WatsonTcp::DisconnectionEventArgs^>(this, &Wagner::WagnerForm::OnClientDisconnected);
-	server->Events->MessageReceived += gcnew System::EventHandler<WatsonTcp::MessageReceivedEventArgs^>(this, &Wagner::WagnerForm::OnMessageReceived);
+	//server = gcnew WatsonTcpServer(ServerAddress->Text, 9000);
+	//server->Events->ClientConnected += gcnew System::EventHandler<WatsonTcp::ConnectionEventArgs^>(this, &Wagner::WagnerForm::OnClientConnected);
+	//server->Events->ClientDisconnected += gcnew System::EventHandler<WatsonTcp::DisconnectionEventArgs^>(this, &Wagner::WagnerForm::OnClientDisconnected);
+	//server->Events->MessageReceived += gcnew System::EventHandler<WatsonTcp::MessageReceivedEventArgs^>(this, &Wagner::WagnerForm::OnMessageReceived);
 
 	//Func<WatsonTcp::SyncRequest^, WatsonTcp::SyncResponse^>^ SyncRequestReceived = gcnew Func<WatsonTcp::SyncRequest^, WatsonTcp::SyncResponse^>(this,
 	//	&Wagner::WagnerForm::SyncRequestReceived);
 	//server->Callbacks->SyncRequestReceived = SyncRequestReceived;
-	server->Start();
+
+	server1 = gcnew CavemanTcpServer("127.0.0.1:9000");
+	server1->Events->ClientDisconnected += gcnew System::EventHandler<CavemanTcp::ClientDisconnectedEventArgs^>(this, &Wagner::WagnerForm::OnClientDisconnected);
+	server1->Events->ClientConnected += gcnew System::EventHandler<CavemanTcp::ClientConnectedEventArgs^>(this, &Wagner::WagnerForm::OnClientConnected);
+	server1->Start();
 	chatTextBox->Text += "Запуск....\r\n";
 
 	funcDictionary->Add("getPosition", GET_POSITION);
@@ -74,8 +85,27 @@ void Wagner::WagnerForm::UpdateChatBox(String^ text) {
 }
 
 void Wagner::WagnerForm::UpdateClientConnected(String^ text) {
-	chatTextBox->Text += String::Format(gcnew String("{0}: подключен\r\n"), text);
-	clientsListBox->Items->Add(text);
+	this->Enabled = false;
+	WagnerPacket^ rx = gcnew WagnerPacket();
+	rx->command = WHO_ARE_YOU;
+	rx->data = 0;
+	int size = Marshal::SizeOf(rx);
+
+	auto message = getBytes(rx);
+	server1->Send(client, message);
+	ReadResult^ rr = server1->ReadWithTimeout(10000, client, size);
+	if (rr->Status == ReadResultStatus::Timeout)
+		server1->DisconnectClient(client);
+
+	rx = fromBytes(rr->Data);
+	if (rx->command == WHO_ARE_YOU && rx->data == 0) {
+		clientsDictionary->Add(client, "Focus");
+		chatTextBox->Text += String::Format(gcnew String("{0}: подключен\r\n"), text);
+		clientsListBox->Items->Add(text);
+		return;
+	}
+	server1->DisconnectClient(client);
+	this->Enabled = true;
 }
 
 void Wagner::WagnerForm::UpdateClientDisconnected(String^ text) {
@@ -83,8 +113,8 @@ void Wagner::WagnerForm::UpdateClientDisconnected(String^ text) {
 	clientsListBox->Items->Remove(text);
 }
 
-void Wagner::WagnerForm::OnClientConnected(System::Object^ sender, WatsonTcp::ConnectionEventArgs^ e) {
-	client = e->IpPort;
+//void Wagner::WagnerForm::OnClientConnected(System::Object^ sender, WatsonTcp::ConnectionEventArgs^ e) {
+//	client = e->IpPort;
 	//try {
 	//	WagnerPacket^ packet = gcnew WagnerPacket();
 	//	packet->command = WHO_ARE_YOU;
@@ -103,18 +133,18 @@ void Wagner::WagnerForm::OnClientConnected(System::Object^ sender, WatsonTcp::Co
 	//catch (TimeoutException^ ex) {
 	//	server->DisconnectClient(e->IpPort, MessageStatus::AuthFailure, true);
 	//}
-}
+//}
 
-void Wagner::WagnerForm::OnClientDisconnected(System::Object^ sender, WatsonTcp::DisconnectionEventArgs^ e) {
-	if (clientsDictionary->ContainsKey(e->IpPort)) {
-		Update^ action = gcnew Update(this, &Wagner::WagnerForm::UpdateClientDisconnected);
-		this->Invoke(action, e->IpPort);
-	}
-	else {
-		Update^ action = gcnew Update(this, &Wagner::WagnerForm::UpdateChatBox);
-		this->Invoke(action, String::Format(gcnew String("Попытка соединения {0}. Авторизация не пройдена\r\n"), e->IpPort));
-	}
-}
+//void Wagner::WagnerForm::OnClientDisconnected(System::Object^ sender, WatsonTcp::DisconnectionEventArgs^ e) {
+//	if (clientsDictionary->ContainsKey(e->IpPort)) {
+//		Update^ action = gcnew Update(this, &Wagner::WagnerForm::UpdateClientDisconnected);
+//		this->Invoke(action, e->IpPort);
+//	}
+//	else {
+//		Update^ action = gcnew Update(this, &Wagner::WagnerForm::UpdateChatBox);
+//		this->Invoke(action, String::Format(gcnew String("Попытка соединения {0}. Авторизация не пройдена\r\n"), e->IpPort));
+//	}
+//}
 
 void Wagner::WagnerForm::OnMessageReceived(System::Object^ sender, WatsonTcp::MessageReceivedEventArgs^ e) {
 	throw gcnew System::NotImplementedException();
@@ -236,13 +266,26 @@ System::Void Wagner::WagnerForm::CyclogrammTextBox_Leave(System::Object^ sender,
 
 #pragma endregion
 
-void Wagner::WagnerForm::sendPacket(String^ ipPort, uint8_t func, uint32_t dataToSend) {
-	WagnerPacket^ packet = gcnew WagnerPacket();
+//void Wagner::WagnerForm::sendPacket(String^ ipPort, uint8_t func, uint32_t dataToSend) {
+//	WagnerPacket^ packet = gcnew WagnerPacket();
+//
+//	packet->command = func;
+//	packet->data = dataToSend;
+//	
+//	auto message = getBytes(packet);
+//	server->SendAndWait(1000, ipPort, message, nullptr, 0);
+//
+//}
 
-	packet->command = func;
-	packet->data = dataToSend;
-	
-	auto message = getBytes(packet);
-	server->SendAndWait(1000, ipPort, message, nullptr, 0);
+void Wagner::WagnerForm::OnClientConnected(System::Object^ sender, CavemanTcp::ClientConnectedEventArgs^ e) {
+	client = e->IpPort;
+	Update^ action = gcnew Wagner::WagnerForm::Update(this, &Wagner::WagnerForm::UpdateClientConnected);
+	this->Invoke(action, "Focus");
+	Console::WriteLine("as");
+}
 
+
+void Wagner::WagnerForm::OnClientDisconnected(System::Object^ sender, CavemanTcp::ClientDisconnectedEventArgs^ e)
+{
+	return;
 }
