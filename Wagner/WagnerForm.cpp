@@ -17,7 +17,21 @@ System::Void Wagner::WagnerForm::StartButton_Click(System::Object^ sender, Syste
 	if (!isScriptValid)
 		return;
 
+	this->Enabled = false;
 
+	auto commands = CyclogrammTextBox->Text->Split(gcnew array<String^>{"\n"}, StringSplitOptions::RemoveEmptyEntries);
+	CyclogrammProgressBar->Maximum = commands->Length;
+	for (int i = 0; i < commands->Length; i++) {
+		String^ funcName = getFunctionFromString(commands[i]);
+		auto args = getArgsFromString(commands[i]);
+
+		if(args->Capacity != 0)
+			funcs[funcName](args[0]);
+		else
+			funcs[funcName](0);
+		CyclogrammProgressBar->Increment(1);
+	}
+	this->Enabled = true;
 
 }
 
@@ -33,11 +47,12 @@ System::Void Wagner::WagnerForm::WagnerForm_Load(System::Object^ sender, System:
 	server->Start();
 	chatTextBox->Text += "Запуск....\r\n";
 
-	funcDictionary->Add("getPosition", GET_POSITION);
-	funcDictionary->Add("moveTo", MOVE_TO);
-	funcDictionary->Add("park", PARK);
-	funcDictionary->Add("getErrors", GET_ERRORS);
-	funcDictionary->Add("resetErrors", RESET_ERRORS);
+	funcs->Add("whoAreYou", gcnew Action<uint32_t>(this, &WagnerForm::WhoAreYou));
+	funcs->Add("getPosition", gcnew Action<uint32_t>(this, &WagnerForm::GetPosition));
+	funcs->Add("moveTo", gcnew Action<uint32_t>(this, &WagnerForm::MoveTo));
+	funcs->Add("park", gcnew Action<uint32_t>(this, &WagnerForm::Park));
+	funcs->Add("getErrors", gcnew Action<uint32_t>(this, &WagnerForm::GetErrors));
+	funcs->Add("resetErrors", gcnew Action<uint32_t>(this, &WagnerForm::ResetErrors));
 }
 
 System::Void Wagner::WagnerForm::CommandListBox_MouseDoubleClick(System::Object^ sender, System::Windows::Forms::MouseEventArgs^ e) {
@@ -67,7 +82,6 @@ void Wagner::WagnerForm::UpdateChatBox(String^ text) {
 void Wagner::WagnerForm::UpdateClientConnected(String^ ip) {
 	chatTextBox->Text += String::Format(gcnew String("{0}: подключен\r\n"), ip);
 	clientsListBox->Items->Add(ip);
-
 }
 
 void Wagner::WagnerForm::UpdateClientDisconnected(String^ ip) {
@@ -76,7 +90,6 @@ void Wagner::WagnerForm::UpdateClientDisconnected(String^ ip) {
 }
 
 void Wagner::WagnerForm::OnClientConnected(System::Object^ sender, SuperSimpleTcp::ConnectionEventArgs^ e) {
-	sendPacket(WHO_ARE_YOU, 0);
 	Update^ action = gcnew Wagner::WagnerForm::Update(this, &Wagner::WagnerForm::UpdateClientConnected);
 	this->Invoke(action, e->IpPort);
 }
@@ -87,7 +100,7 @@ void Wagner::WagnerForm::OnClientDisconnected(System::Object^ sender, SuperSimpl
 }
 
 void Wagner::WagnerForm::OnDataReceived(System::Object^ sender, SuperSimpleTcp::DataReceivedEventArgs^ e) {
-
+	WagnerPacket^ tx = fromBytes(e->Data);
 	return;
 }
 
@@ -160,7 +173,7 @@ bool Wagner::WagnerForm::functionParser(String^ s) {
 	if (String::IsNullOrEmpty(funcName))
 		return false;	
 	
-	if (funcDictionary->ContainsKey(funcName))
+	if (funcs->ContainsKey(funcName))
 		isCorrectName = true;
 	
 	auto args = getArgsFromString(s);
@@ -201,12 +214,84 @@ System::Void Wagner::WagnerForm::CyclogrammTextBox_Leave(System::Object^ sender,
 
 #pragma endregion
 
-void Wagner::WagnerForm::sendPacket(uint8_t func, uint32_t dataToSend) {
+#pragma region Funcs
+
+void Wagner::WagnerForm::WhoAreYou(uint32_t data) {
+	Console::WriteLine("Who Are You");
+	return;
+
 	WagnerPacket^ packet = gcnew WagnerPacket();
 
-	packet->command = func;
-	packet->data = dataToSend;
-	
+	packet->command = WHO_ARE_YOU;
+	packet->data = data;
+
 	auto message = getBytes(packet);
 	server->Send(clientsListBox->SelectedItem->ToString(), message);
 }
+
+void Wagner::WagnerForm::GetPosition(uint32_t data) {
+	Console::WriteLine("Get Position");
+	return;
+
+	WagnerPacket^ packet = gcnew WagnerPacket();
+
+	packet->command = GET_POSITION;
+	packet->data = data;
+
+	auto message = getBytes(packet);
+	server->Send(clientsListBox->SelectedItem->ToString(), message);
+}
+
+void Wagner::WagnerForm::MoveTo(uint32_t data) {
+	Console::WriteLine("Move To");
+	return;
+
+	WagnerPacket^ packet = gcnew WagnerPacket();
+
+	packet->command = MOVE_TO;
+	packet->data = data;
+
+	auto message = getBytes(packet);
+	server->Send(clientsListBox->SelectedItem->ToString(), message);
+}
+
+void Wagner::WagnerForm::Park(uint32_t data) {
+	Console::WriteLine("Park");
+	return;
+
+	WagnerPacket^ packet = gcnew WagnerPacket();
+
+	packet->command = PARK;
+	packet->data = data;
+
+	auto message = getBytes(packet);
+	server->Send(clientsListBox->SelectedItem->ToString(), message);
+}
+
+void Wagner::WagnerForm::GetErrors(uint32_t data) {
+	Console::WriteLine("Get Errors");
+	return;
+
+	WagnerPacket^ packet = gcnew WagnerPacket();
+
+	packet->command = GET_ERRORS;
+	packet->data = data;
+
+	auto message = getBytes(packet);
+	server->Send(clientsListBox->SelectedItem->ToString(), message);
+}
+
+void Wagner::WagnerForm::ResetErrors(uint32_t data) {
+	Console::WriteLine("Reset Errors");
+	return;
+
+	WagnerPacket^ packet = gcnew WagnerPacket();
+
+	packet->command = RESET_ERRORS;
+	packet->data = data;
+
+	auto message = getBytes(packet);
+	server->Send(clientsListBox->SelectedItem->ToString(), message);
+}
+
+#pragma endregion

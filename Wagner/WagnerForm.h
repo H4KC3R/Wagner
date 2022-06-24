@@ -35,12 +35,15 @@ namespace Wagner {
 		uint32_t data;
 	};
 
-	public:
-		bool isScriptValid = false;
-		Dictionary<String^, uint8_t>^ funcDictionary = gcnew Dictionary<String^, uint8_t>();
-		Dictionary<String^, String^>^ clientsDictionary = gcnew Dictionary<String^, String^>();
-		SimpleTcpServer^ server;
+	public:		
 		delegate void Update(String^ msg);
+		bool isScriptValid = false;
+
+		Dictionary<String^, Action<uint32_t>^>^ funcs = gcnew Dictionary<String^, Action<uint32_t>^>();
+		Dictionary<String^, String^>^ clientsDictionary = gcnew Dictionary<String^, String^>();
+
+		SimpleTcpServer^ server;
+
 	public:
 		WagnerForm(void)
 		{
@@ -327,12 +330,21 @@ private: System::Void CyclogrammTextBox_Leave(System::Object^ sender, System::Ev
 
 #pragma endregion
 
-#pragma region PacketService
+#pragma region Funcs
 
-	   void sendPacket(uint8_t func, uint32_t dataToSend);
+	   void WhoAreYou(uint32_t data);
 
-	   WagnerPacket^ parsePacket();
+	   void GetPosition(uint32_t data);
+
+	   void MoveTo(uint32_t data);
+
+	   void Park(uint32_t data);
+
+	   void GetErrors(uint32_t data);
+
+	   void ResetErrors(uint32_t data);
 
 #pragma endregion
+
 };
 }
