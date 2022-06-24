@@ -31,8 +31,8 @@ System::Void Wagner::WagnerForm::StartButton_Click(System::Object^ sender, Syste
 			funcs[funcName](0);
 		CyclogrammProgressBar->Increment(1);
 	}
-	this->Enabled = true;
 
+	this->Enabled = true;
 }
 
 System::Void Wagner::WagnerForm::WagnerForm_Load(System::Object^ sender, System::EventArgs^ e) {
