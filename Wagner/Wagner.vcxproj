@@ -132,11 +132,11 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <Reference Include="CavemanTcp">
+      <HintPath>libs\CavemanTcp.dll</HintPath>
+    </Reference>
     <Reference Include="LastSummerSmile">
       <HintPath>libs\LastSummerSmile.dll</HintPath>
-    </Reference>
-    <Reference Include="SuperSimpleTcp">
-      <HintPath>libs\SuperSimpleTcp.dll</HintPath>
     </Reference>
     <Reference Include="System" />
     <Reference Include="System.Data" />

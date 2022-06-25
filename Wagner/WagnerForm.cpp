@@ -40,14 +40,13 @@ System::Void Wagner::WagnerForm::WagnerForm_Load(System::Object^ sender, System:
 	CyclogrammTextBox->DragDrop += gcnew System::Windows::Forms::DragEventHandler(this, &Wagner::WagnerForm::OnDragDrop);
 	CyclogrammTextBox->Clear();
 
-	server = gcnew SimpleTcpServer(ServerAdrress->Text);
-	server->Events->ClientConnected += gcnew System::EventHandler<SuperSimpleTcp::ConnectionEventArgs^>(this, &Wagner::WagnerForm::OnClientConnected);
-	server->Events->ClientDisconnected += gcnew System::EventHandler<SuperSimpleTcp::ConnectionEventArgs^>(this, &Wagner::WagnerForm::OnClientDisconnected);
-	server->Events->DataReceived += gcnew System::EventHandler<SuperSimpleTcp::DataReceivedEventArgs^>(this, &Wagner::WagnerForm::OnDataReceived);
+	server = gcnew CavemanTcpServer(ServerAdrress->Text);
+
+	server->Events->ClientConnected += gcnew System::EventHandler<CavemanTcp::ClientConnectedEventArgs^>(this, &Wagner::WagnerForm::OnClientConnected);
+	server->Events->ClientDisconnected += gcnew System::EventHandler<CavemanTcp::ClientDisconnectedEventArgs^>(this, &Wagner::WagnerForm::OnClientDisconnected);
 	server->Start();
 	chatTextBox->Text += "Запуск....\r\n";
 
-	funcs->Add("whoAreYou", gcnew Action<uint32_t>(this, &WagnerForm::WhoAreYou));
 	funcs->Add("getPosition", gcnew Action<uint32_t>(this, &WagnerForm::GetPosition));
 	funcs->Add("moveTo", gcnew Action<uint32_t>(this, &WagnerForm::MoveTo));
 	funcs->Add("park", gcnew Action<uint32_t>(this, &WagnerForm::Park));
@@ -80,28 +79,54 @@ void Wagner::WagnerForm::UpdateChatBox(String^ text) {
 }
 
 void Wagner::WagnerForm::UpdateClientConnected(String^ ip) {
-	chatTextBox->Text += String::Format(gcnew String("{0}: подключен\r\n"), ip);
-	clientsListBox->Items->Add(ip);
+	this->Enabled = false;
+
+	WagnerPacket^ packet = gcnew WagnerPacket();
+	packet->command = WHO_ARE_YOU;
+	packet->data = 0;
+	int size = Marshal::SizeOf(packet);
+
+	auto message = getBytes(packet);
+
+	server->Send(ip, message);
+	ReadResult^ rr = server->ReadWithTimeout(1000, ip, size);
+	if (rr->Status == ReadResultStatus::Timeout) {
+		server->DisconnectClient(ip);
+		this->Enabled = true;
+		return;
+	}
+
+	packet = fromBytes(rr->Data);
+	if (packet->command == WHO_ARE_YOU && packet->data == 0) {
+		clientsDictionary->Add(ip, "Focus");
+		chatTextBox->Text += String::Format(gcnew String("{0}: подключен\r\n"), ip);
+		clientsListBox->Items->Add("Focus");
+		this->Enabled = true;
+		return;
+	}
+	server->DisconnectClient(ip);
+	this->Enabled = true;
 }
 
 void Wagner::WagnerForm::UpdateClientDisconnected(String^ ip) {
 	chatTextBox->Text += String::Format(gcnew String("{0}: отключен\r\n"), ip);
-	clientsListBox->Items->Remove(ip);
+	clientsListBox->Items->Remove(clientsDictionary[ip]);
 }
 
-void Wagner::WagnerForm::OnClientConnected(System::Object^ sender, SuperSimpleTcp::ConnectionEventArgs^ e) {
+void Wagner::WagnerForm::OnClientConnected(System::Object^ sender, CavemanTcp::ClientConnectedEventArgs^ e) {
 	Update^ action = gcnew Wagner::WagnerForm::Update(this, &Wagner::WagnerForm::UpdateClientConnected);
 	this->Invoke(action, e->IpPort);
 }
 
-void Wagner::WagnerForm::OnClientDisconnected(System::Object^ sender, SuperSimpleTcp::ConnectionEventArgs^ e) {
-	Update^ action = gcnew Update(this, &Wagner::WagnerForm::UpdateClientDisconnected);
-	this->Invoke(action, e->IpPort);
-}
-
-void Wagner::WagnerForm::OnDataReceived(System::Object^ sender, SuperSimpleTcp::DataReceivedEventArgs^ e) {
-	WagnerPacket^ tx = fromBytes(e->Data);
-	return;
+void Wagner::WagnerForm::OnClientDisconnected(System::Object^ sender, CavemanTcp::ClientDisconnectedEventArgs^ e) {
+	if (clientsDictionary->ContainsKey(e->IpPort)) {
+		Update^ action = gcnew Update(this, &Wagner::WagnerForm::UpdateClientDisconnected);
+		this->Invoke(action, e->IpPort);
+	}
+	else {
+		Update^ action = gcnew Update(this, &Wagner::WagnerForm::UpdateChatBox);
+		this->Invoke(action, String::Format(gcnew String("Попытка соединения {0}. Авторизация не пройдена\r\n"), e->IpPort));
+	}
 }
 
 #pragma endregion
@@ -216,19 +241,6 @@ System::Void Wagner::WagnerForm::CyclogrammTextBox_Leave(System::Object^ sender,
 
 #pragma region Funcs
 
-void Wagner::WagnerForm::WhoAreYou(uint32_t data) {
-	Console::WriteLine("Who Are You");
-	return;
-
-	WagnerPacket^ packet = gcnew WagnerPacket();
-
-	packet->command = WHO_ARE_YOU;
-	packet->data = data;
-
-	auto message = getBytes(packet);
-	server->Send(clientsListBox->SelectedItem->ToString(), message);
-}
-
 void Wagner::WagnerForm::GetPosition(uint32_t data) {
 	Console::WriteLine("Get Position");
 	return;
@@ -295,3 +307,6 @@ void Wagner::WagnerForm::ResetErrors(uint32_t data) {
 }
 
 #pragma endregion
+
+
+

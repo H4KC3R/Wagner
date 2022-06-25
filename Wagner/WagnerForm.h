@@ -18,7 +18,7 @@ namespace Wagner {
 	using namespace System::Data;
 	using namespace System::Drawing;
 	using namespace System::Collections::Generic;
-	using namespace SuperSimpleTcp;
+	using namespace CavemanTcp;
 	using namespace System::Runtime::InteropServices;
 
 
@@ -42,7 +42,7 @@ namespace Wagner {
 		Dictionary<String^, Action<uint32_t>^>^ funcs = gcnew Dictionary<String^, Action<uint32_t>^>();
 		Dictionary<String^, String^>^ clientsDictionary = gcnew Dictionary<String^, String^>();
 
-		SimpleTcpServer^ server;
+		CavemanTcpServer^ server;
 
 	public:
 		WagnerForm(void)
@@ -302,9 +302,8 @@ private: System::Void ClearCyclogrammButton_Click(System::Object^ sender, System
 	   void UpdateClientConnected(String^ ip);
 	   void UpdateClientDisconnected(String^ ip);
 
-	   void OnClientConnected(System::Object^ sender, SuperSimpleTcp::ConnectionEventArgs^ e);
-	   void OnClientDisconnected(System::Object^ sender, SuperSimpleTcp::ConnectionEventArgs^ e);
-	   void OnDataReceived(System::Object^ sender, SuperSimpleTcp::DataReceivedEventArgs^ e);
+	   void OnClientConnected(System::Object^ sender, CavemanTcp::ClientConnectedEventArgs^ e);
+	   void OnClientDisconnected(System::Object^ sender, CavemanTcp::ClientDisconnectedEventArgs^ e);
 
 #pragma endregion
 
@@ -331,8 +330,6 @@ private: System::Void CyclogrammTextBox_Leave(System::Object^ sender, System::Ev
 #pragma endregion
 
 #pragma region Funcs
-
-	   void WhoAreYou(uint32_t data);
 
 	   void GetPosition(uint32_t data);
 
