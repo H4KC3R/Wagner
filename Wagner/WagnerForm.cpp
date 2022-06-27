@@ -1,5 +1,7 @@
 ﻿#include "WagnerForm.h"
 
+#pragma region UI_Events
+
 System::Void Wagner::WagnerForm::ExpandButton_Click(System::Object^ sender, System::EventArgs^ e) {
 	if (ExpandButton->Text == ">") {
 		this->Width = 720;
@@ -18,6 +20,7 @@ System::Void Wagner::WagnerForm::StartButton_Click(System::Object^ sender, Syste
 		StopButton->Enabled = true;
 
 		isPause = false;
+		pauseEvent->Set();
 		return;
 	}
 
@@ -25,10 +28,15 @@ System::Void Wagner::WagnerForm::StartButton_Click(System::Object^ sender, Syste
 		return;
 	if (!isScriptValid)
 		return;
-	if (clientsDictionary->Count == 0)
-		return;
 
-	CommandListBox->Enabled = false;
+	FocusCommandListBox->Enabled = false;
+	FocusCommandListBox->Enabled = false;
+	FocusCommandListBox->Enabled = false;
+
+	cnctToFocus->Enabled = false;
+	cnctToDataFrame->Enabled = false;
+	cnctToHexapod->Enabled = false;
+
 	CyclogrammTextBox->ReadOnly = true;
 	ClearCyclogrammButton->Enabled = false;
 	StartButton->Enabled = false;
@@ -48,6 +56,7 @@ System::Void Wagner::WagnerForm::PauseButton_Click(System::Object^ sender, Syste
 		if (result == System::Windows::Forms::DialogResult::No)
 			CancelReading->Cancel();
 	}
+
 	PauseButton->Enabled = false;
 	isPause = true;
 }
@@ -59,7 +68,12 @@ System::Void Wagner::WagnerForm::StopButton_Click(System::Object^ sender, System
 		if (result == System::Windows::Forms::DialogResult::No)
 			CancelReading->Cancel();
 	}
+	PauseButton->Enabled = false;
+	StopButton->Enabled = false;
 	DoCyclogrammWorker->CancelAsync();
+	if (isPause)
+		pauseEvent->Set();
+	isPause = false;
 }
 
 System::Void Wagner::WagnerForm::WagnerForm_Load(System::Object^ sender, System::EventArgs^ e) {
@@ -67,23 +81,78 @@ System::Void Wagner::WagnerForm::WagnerForm_Load(System::Object^ sender, System:
 	CyclogrammTextBox->DragDrop += gcnew System::Windows::Forms::DragEventHandler(this, &Wagner::WagnerForm::OnDragDrop);
 	CyclogrammTextBox->Clear();
 
-	server = gcnew CavemanTcpServer(ServerAdrress->Text);
+	FocusClient = gcnew CavemanTcpClient(FocusIpPortTB->Text);
+	FocusClient->Events->ClientDisconnected += gcnew System::EventHandler(this, &Wagner::WagnerForm::OnFocusDisconnected);
 
-	server->Events->ClientConnected += gcnew System::EventHandler<CavemanTcp::ClientConnectedEventArgs^>(this, &Wagner::WagnerForm::OnClientConnected);
-	server->Events->ClientDisconnected += gcnew System::EventHandler<CavemanTcp::ClientDisconnectedEventArgs^>(this, &Wagner::WagnerForm::OnClientDisconnected);
-	server->Start();
-	chatTextBox->Text += "Запуск....\r\n";
+	HexapodClient = gcnew CavemanTcpClient(HexapodIpPortTB->Text);
+	HexapodClient->Events->ClientDisconnected += gcnew System::EventHandler(this, &Wagner::WagnerForm::OnHexapodDisconnected);
 
-	funcs->Add("getPosition", gcnew Action<uint32_t>(this, &WagnerForm::GetPosition));
-	funcs->Add("moveTo", gcnew Action<uint32_t>(this, &WagnerForm::MoveTo));
-	funcs->Add("park", gcnew Action<uint32_t>(this, &WagnerForm::Park));
-	funcs->Add("getErrors", gcnew Action<uint32_t>(this, &WagnerForm::GetErrors));
-	funcs->Add("resetErrors", gcnew Action<uint32_t>(this, &WagnerForm::ResetErrors));
+	funcs->Add("getPosition", gcnew ExecuteCommand(this, &WagnerForm::GetPosition));
+	funcs->Add("moveTo", gcnew ExecuteCommand(this, &WagnerForm::MoveTo));
+	funcs->Add("park", gcnew ExecuteCommand(this, &WagnerForm::Park));
+	funcs->Add("getErrors", gcnew ExecuteCommand(this, &WagnerForm::GetErrors));
+	funcs->Add("resetErrors", gcnew ExecuteCommand(this, &WagnerForm::ResetErrors));
 }
 
-System::Void Wagner::WagnerForm::CommandListBox_MouseDoubleClick(System::Object^ sender, System::Windows::Forms::MouseEventArgs^ e) {
-	CyclogrammTextBox->Text += CommandListBox->SelectedItem->ToString() + "()" + "\r\n";
+System::Void Wagner::WagnerForm::FocusCommandListBox_SelectedIndexChanged(System::Object^ sender, System::EventArgs^ e) {
+	CyclogrammTextBox->Text += FocusCommandListBox->SelectedItem->ToString() + "()" + "\r\n";
 	ValidateText();
+}
+
+System::Void Wagner::WagnerForm::DataFrameCommandListBox_SelectedIndexChanged(System::Object^ sender, System::EventArgs^ e) {
+	CyclogrammTextBox->Text += DataFrameCommandListBox->SelectedItem->ToString() + "()" + "\r\n";
+	ValidateText();
+}
+
+System::Void Wagner::WagnerForm::HexapodCommandListBox_SelectedIndexChanged(System::Object^ sender, System::EventArgs^ e) {
+	CyclogrammTextBox->Text += HexapodCommandListBox->SelectedItem->ToString() + "()" + "\r\n";
+	ValidateText();
+}
+
+System::Void Wagner::WagnerForm::cnctToFocus_Click(System::Object^ sender, System::EventArgs^ e) {
+	if (FocusClient->IsConnected) {
+		FocusClient->Disconnect();
+	}
+	else {
+		this->Enabled = false;
+		FocusClient->Connect(1000);
+		if (FocusClient->IsConnected) {
+			WagnerPacket^ packet = gcnew WagnerPacket();
+			packet->command = WHO_ARE_YOU;
+			packet->data = 0xD0;
+			int size = Marshal::SizeOf(packet);
+
+			auto message = getBytes(packet);
+
+			FocusClient->Send(message);
+			ReadResult^ rr = FocusClient->ReadWithTimeout(1000, size);
+
+			if (rr->Status == ReadResultStatus::Success) {
+				packet = fromBytes(rr->Data);
+				if (packet->command == WHO_ARE_YOU && packet->data == 0xDD) {
+					chatTextBox->Text += String::Format(gcnew String("Focus подключен\r\n"));
+					cnctToFocus->ForeColor = System::Drawing::Color::Red;
+					cnctToFocus->Text = "Отключить Focus";
+					this->Enabled = true;
+					return;
+				}
+			}
+			chatTextBox->Text += "Попытка соединения c Focus. Авторизация не пройдена\r\n";
+			FocusClient->Disconnect();
+			this->Enabled = true;
+		}
+	}
+}
+
+System::Void Wagner::WagnerForm::cnctToDataFrame_Click(System::Object^ sender, System::EventArgs^ e) {
+	// TO DO
+
+	return;
+}
+
+System::Void Wagner::WagnerForm::cnctToHexapod_Click(System::Object^ sender, System::EventArgs^ e) {
+	// TO DO
+	return;
 }
 
 void Wagner::WagnerForm::OnDragDrop(System::Object^ sender, System::Windows::Forms::DragEventArgs^ e) {
@@ -99,55 +168,38 @@ System::Void Wagner::WagnerForm::ClearCyclogrammButton_Click(System::Object^ sen
 	CyclogrammTextBox->Clear();
 }
 
-#pragma region Server
+#pragma endregion
+
+#pragma region Messaging
 
 void Wagner::WagnerForm::UpdateChatBox(String^ text) {
 	chatTextBox->Text += text;
 }
 
-void Wagner::WagnerForm::UpdateClientConnected(String^ ip) {
-	this->Enabled = false;
+void Wagner::WagnerForm::OnFocusDisconnected(System::Object^ sender, System::EventArgs^ e) {
+	UpdateDisconnectionAction^ action = 
+		gcnew UpdateDisconnectionAction(this, &Wagner::WagnerForm::UpdateClientDisconnected);
+	this->Invoke(action, 0xD0);
+}
 
-	WagnerPacket^ packet = gcnew WagnerPacket();
-	packet->command = WHO_ARE_YOU;
-	packet->data = 0;
-	int size = Marshal::SizeOf(packet);
+void Wagner::WagnerForm::OnHexapodDisconnected(System::Object^ sender, System::EventArgs^ e) {
+	UpdateDisconnectionAction^ action = 
+		gcnew UpdateDisconnectionAction(this, &Wagner::WagnerForm::UpdateClientDisconnected);
+	this->Invoke(action, 0XD2);
+}
 
-	auto message = getBytes(packet);
-
-	server->Send(ip, message);
-	ReadResult^ rr = server->ReadWithTimeout(1000, ip, size);
-
-	if (rr->Status == ReadResultStatus::Success) {
-		packet = fromBytes(rr->Data);
-		if (packet->command == WHO_ARE_YOU && packet->data == 0) {
-			clientsDictionary->Add(ip, "Focus");
-			chatTextBox->Text += String::Format(gcnew String("{0}: подключен\r\n"), ip);
-			clientsListBox->Items->Add("Focus");
-			this->Enabled = true;
-			return;
-		}
+void Wagner::WagnerForm::UpdateClientDisconnected(int32_t app) {
+	switch (app) {
+	case FOCUS:
+		chatTextBox->Text += "Focus Отключен\r\n";
+		cnctToFocus->ForeColor = System::Drawing::Color::DarkGreen;
+		cnctToFocus->Text = "Подключить Focus";
+		break;
+	case HEXAPOD:
+		chatTextBox->Text += "Hexapod Отключен\r\n";
+		cnctToHexapod->ForeColor = System::Drawing::Color::DarkGreen;
+		cnctToHexapod->Text = "Подключить Hexapod";
 	}
-	this->Enabled = true;
-	chatTextBox->Text += String::Format(gcnew String("Попытка соединения {0}. Авторизация не пройдена\r\n"), ip);
-	server->DisconnectClient(ip);
-}
-
-void Wagner::WagnerForm::UpdateClientDisconnected(String^ ip) {
-	if (clientsDictionary->ContainsKey(ip)) {
-		chatTextBox->Text += String::Format(gcnew String("{0}: отключен\r\n"), ip);
-		clientsListBox->Items->Remove(clientsDictionary[ip]);
-	}
-}
-
-void Wagner::WagnerForm::OnClientConnected(System::Object^ sender, CavemanTcp::ClientConnectedEventArgs^ e) {
-	Update^ action = gcnew Wagner::WagnerForm::Update(this, &Wagner::WagnerForm::UpdateClientConnected);
-	this->Invoke(action, e->IpPort);
-}
-
-void Wagner::WagnerForm::OnClientDisconnected(System::Object^ sender, CavemanTcp::ClientDisconnectedEventArgs^ e) {
-	Update^ action = gcnew Update(this, &Wagner::WagnerForm::UpdateClientDisconnected);
-	this->Invoke(action, e->IpPort);
 }
 
 #pragma endregion
@@ -262,54 +314,70 @@ System::Void Wagner::WagnerForm::CyclogrammTextBox_Leave(System::Object^ sender,
 
 #pragma region Funcs
 
-void Wagner::WagnerForm::GetPosition(uint32_t data) {
+bool Wagner::WagnerForm::GetPosition(uint32_t data) {
+
 	WagnerPacket^ packet = gcnew WagnerPacket();
 
 	packet->command = GET_POSITION;
 	packet->data = data;
 
 	auto message = getBytes(packet);
-	server->Send(clientsListBox->SelectedItem->ToString(), message);
+	if (!FocusClient->IsConnected)
+		return false;
+	FocusClient->Send(message);
+	return true;
 }
 
-void Wagner::WagnerForm::MoveTo(uint32_t data) {
+bool Wagner::WagnerForm::MoveTo(uint32_t data) {
 	WagnerPacket^ packet = gcnew WagnerPacket();
 
 	packet->command = MOVE_TO;
 	packet->data = data;
 
 	auto message = getBytes(packet);
-	server->Send(clientsListBox->SelectedItem->ToString(), message);
+	if (!FocusClient->IsConnected)
+		return false;
+	FocusClient->Send(message);
+	return true;
 }
 
-void Wagner::WagnerForm::Park(uint32_t data) {
+bool Wagner::WagnerForm::Park(uint32_t data) {
 	WagnerPacket^ packet = gcnew WagnerPacket();
 
 	packet->command = PARK;
 	packet->data = data;
 
 	auto message = getBytes(packet);
-	server->Send(clientsListBox->SelectedItem->ToString(), message);
+	if (!FocusClient->IsConnected)
+		return false;
+	FocusClient->Send(message);
+	return true;
 }
 
-void Wagner::WagnerForm::GetErrors(uint32_t data) {
+bool Wagner::WagnerForm::GetErrors(uint32_t data) {
 	WagnerPacket^ packet = gcnew WagnerPacket();
 
 	packet->command = GET_ERRORS;
 	packet->data = data;
 
 	auto message = getBytes(packet);
-	server->Send(clientsListBox->SelectedItem->ToString(), message);
+	if (!FocusClient->IsConnected)
+		return false;
+	FocusClient->Send(message);
+	return true;
 }
 
-void Wagner::WagnerForm::ResetErrors(uint32_t data) {
+bool Wagner::WagnerForm::ResetErrors(uint32_t data) {
 	WagnerPacket^ packet = gcnew WagnerPacket();
 
 	packet->command = RESET_ERRORS;
 	packet->data = data;
 
 	auto message = getBytes(packet);
-	server->Send(clientsListBox->SelectedItem->ToString(), message);
+	if (!FocusClient->IsConnected)
+		return false;
+	FocusClient->Send(message);
+	return true;
 }
 
 #pragma endregion
@@ -327,37 +395,51 @@ System::Void Wagner::WagnerForm::DoCyclogrammWorker_DoWork(System::Object^ sende
 	
 	connectionLost:
 		if (isPause) {
-			DoCyclogrammWorker->ReportProgress(1);
+			DoCyclogrammWorker->ReportProgress(1, packet);
+			pauseEvent->WaitOne();
 			continue;
 		}
 
-		for each (KeyValuePair<String^, String^>^ kvp in clientsDictionary) {
-			if (!server->IsConnected(kvp->Value)) {
-				MessageBox::Show(String::Format(gcnew String("Потеряно соединение с {0}\n"), kvp->Value),
+		try {
+
+			String^ funcName = getFunctionFromString(commands[StepCount - 1]);
+			auto args = getArgsFromString(commands[StepCount - 1]);
+			bool result = funcs[funcName](args->Count == 0 ? 0 : args[0]);
+
+			if (!result) {
+				MessageBox::Show(String::Format(gcnew String("Потеряно соединение с {0}\n"), "Asa"),
 					Text, MessageBoxButtons::OK, MessageBoxIcon::Information);
 				isPause = true;
 				goto connectionLost;
 			}
+
+			Tasks::Task<CavemanTcp::ReadResult^>^ rr = FocusClient->ReadWithTimeoutAsync(600000, size, CancelReading->Token);
+			isReading = true;
+			rr->Wait();
+
+			if (rr->Result->Status == ReadResultStatus::Success) {
+				isReading = false;
+				packet = fromBytes(rr->Result->Data);
+				DoCyclogrammWorker->ReportProgress(1, packet);
+			}
+			else {
+				MessageBox::Show("Прием пакета не выполнен", Text, MessageBoxButtons::OK, MessageBoxIcon::Information);
+				isPause = true;
+				continue;
+			}
+		}
+		catch (Exception^ ex) {
+			MessageBox::Show(ex->Message, Text, MessageBoxButtons::OK, MessageBoxIcon::Information);
+			break;
 		}
 
-		String^ funcName = getFunctionFromString(commands[StepCount]);
-		auto args = getArgsFromString(commands[StepCount]);
-
-		Tasks::Task<CavemanTcp::ReadResult^>^ rr = server->ReadWithTimeoutAsync(600000, clientsDictionary["Focus"], size, CancelReading->Token);
-		isReading = true;
-		rr->Wait();
-
-		if (rr->Result->Status == ReadResultStatus::Success) {
-			packet = fromBytes(rr->Result->Data);
-			DoCyclogrammWorker->ReportProgress(1, packet);
-			
-		}
 	}
 }
 
 System::Void Wagner::WagnerForm::DoCyclogrammWorker_ProgressChanged(System::Object^ sender, System::ComponentModel::ProgressChangedEventArgs^ e) {
 	if (isPause) {
 		StartButton->Enabled = true;
+		PauseButton->Enabled = false;
 		StopButton->Enabled = true;
 		return;
 	}
@@ -370,7 +452,28 @@ System::Void Wagner::WagnerForm::DoCyclogrammWorker_ProgressChanged(System::Obje
 	this->Invoke(action, String::Format(gcnew String("Focus: command:{0} data:{1}\r\n"), (Convert::ToString(packet->command)), (Convert::ToString(packet->data))));
 }
 
+System::Void Wagner::WagnerForm::DoCyclogrammWorker_RunWorkerCompleted(System::Object^ sender, System::ComponentModel::RunWorkerCompletedEventArgs^ e) {
+	isReading = false;
+	isPause = false;
+	
+	StepCount = 1;
+
+	StartButton->Enabled = true;
+	PauseButton->Enabled = false;
+	StopButton->Enabled = false;
+
+
+	FocusCommandListBox->Enabled = false;
+	FocusCommandListBox->Enabled = false;
+	FocusCommandListBox->Enabled = false;
+
+	cnctToFocus->Enabled = false;
+	cnctToDataFrame->Enabled = false;
+	cnctToHexapod->Enabled = false;
+
+	CyclogrammTextBox->ReadOnly = false;
+	ClearCyclogrammButton->Enabled = true;
+	StartButton->Enabled = true;
+}
+
 #pragma endregion
-
-
-
