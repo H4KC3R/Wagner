@@ -84,8 +84,21 @@ System::Void Wagner::WagnerForm::WagnerForm_Load(System::Object^ sender, System:
 	FocusClient = gcnew CavemanTcpClient(FocusIpPortTB->Text);
 	FocusClient->Events->ClientDisconnected += gcnew System::EventHandler(this, &Wagner::WagnerForm::OnFocusDisconnected);
 
+	DataFrameClient = gcnew CavemanTcpClient(DataFrameIpPortTB->Text);
+	FocusClient->Events->ClientDisconnected += gcnew System::EventHandler(this, &Wagner::WagnerForm::OnDataFrameDisconnected);
+
 	HexapodClient = gcnew CavemanTcpClient(HexapodIpPortTB->Text);
 	HexapodClient->Events->ClientDisconnected += gcnew System::EventHandler(this, &Wagner::WagnerForm::OnHexapodDisconnected);
+
+	FocusFuncs->Add("getPosition");
+	FocusFuncs->Add("moveTo");
+	FocusFuncs->Add("park");
+	FocusFuncs->Add("getErrors");
+	FocusFuncs->Add("resetErrors");
+
+	connections->Add("Focus", FocusClient);
+	connections->Add("DataFrame", FocusClient);
+	connections->Add("Hexapod", FocusClient);
 
 	funcs->Add("getPosition", gcnew ExecuteCommand(this, &WagnerForm::GetPosition));
 	funcs->Add("moveTo", gcnew ExecuteCommand(this, &WagnerForm::MoveTo));
@@ -112,14 +125,13 @@ System::Void Wagner::WagnerForm::HexapodCommandListBox_SelectedIndexChanged(Syst
 System::Void Wagner::WagnerForm::cnctToFocus_Click(System::Object^ sender, System::EventArgs^ e) {
 	if (FocusClient->IsConnected) {
 		FocusClient->Disconnect();
-	}
-	else {
+	} else {
 		this->Enabled = false;
 		FocusClient->Connect(1000);
 		if (FocusClient->IsConnected) {
 			WagnerPacket^ packet = gcnew WagnerPacket();
 			packet->command = WHO_ARE_YOU;
-			packet->data = 0xD0;
+			packet->data = FOCUS;
 			int size = Marshal::SizeOf(packet);
 
 			auto message = getBytes(packet);
@@ -145,13 +157,44 @@ System::Void Wagner::WagnerForm::cnctToFocus_Click(System::Object^ sender, Syste
 }
 
 System::Void Wagner::WagnerForm::cnctToDataFrame_Click(System::Object^ sender, System::EventArgs^ e) {
-	// TO DO
+	if (DataFrameClient->IsConnected) {
+		DataFrameClient->Disconnect();
+	}
+	else {
+		this->Enabled = false;
+		DataFrameClient->Connect(1000);
+		if (DataFrameClient->IsConnected) {
+			WagnerPacket^ packet = gcnew WagnerPacket();
+			packet->command = WHO_ARE_YOU;
+			packet->data = DATAFRAME;
+			int size = Marshal::SizeOf(packet);
 
+			auto message = getBytes(packet);
+
+			DataFrameClient->Send(message);
+			ReadResult^ rr = DataFrameClient->ReadWithTimeout(1000, size);
+
+			if (rr->Status == ReadResultStatus::Success) {
+				packet = fromBytes(rr->Data);
+				if (packet->command == WHO_ARE_YOU && packet->data == 0xDE) {
+					chatTextBox->Text += String::Format(gcnew String("DataFrame подключен\r\n"));
+					cnctToFocus->ForeColor = System::Drawing::Color::Red;
+					cnctToFocus->Text = "Отключить DataFrame";
+					this->Enabled = true;
+					return;
+				}
+			}
+			chatTextBox->Text += "Попытка соединения c DataFrame. Авторизация не пройдена\r\n";
+			FocusClient->Disconnect();
+			this->Enabled = true;
+		}
+	}
 	return;
 }
 
 System::Void Wagner::WagnerForm::cnctToHexapod_Click(System::Object^ sender, System::EventArgs^ e) {
-	// TO DO
+	// TO DO UDP CONNECTION
+
 	return;
 }
 
@@ -176,30 +219,40 @@ void Wagner::WagnerForm::UpdateChatBox(String^ text) {
 	chatTextBox->Text += text;
 }
 
+void Wagner::WagnerForm::UpdateFocusDisconnected() {
+	chatTextBox->Text += "Focus Отключен\r\n";
+	cnctToFocus->ForeColor = System::Drawing::Color::DarkGreen;
+	cnctToFocus->Text = "Подключить Focus";
+}
+
+void Wagner::WagnerForm::UpdateDataFrameDisconnected() {
+	chatTextBox->Text += "DataFrame Отключен\r\n";
+	cnctToDataFrame->ForeColor = System::Drawing::Color::DarkGreen;
+	cnctToDataFrame->Text = "Подключить DataFrame";
+}
+
+void Wagner::WagnerForm::UpdateHexapodDisconnected() {
+	chatTextBox->Text += "Hexapod Отключен\r\n";
+	cnctToHexapod->ForeColor = System::Drawing::Color::DarkGreen;
+	cnctToHexapod->Text = "Подключить Hexapod";
+}
+
 void Wagner::WagnerForm::OnFocusDisconnected(System::Object^ sender, System::EventArgs^ e) {
 	UpdateDisconnectionAction^ action = 
-		gcnew UpdateDisconnectionAction(this, &Wagner::WagnerForm::UpdateClientDisconnected);
-	this->Invoke(action, 0xD0);
+		gcnew UpdateDisconnectionAction(this, &Wagner::WagnerForm::UpdateFocusDisconnected);
+	this->Invoke(action);
+}
+
+void Wagner::WagnerForm::OnDataFrameDisconnected(System::Object^ sender, System::EventArgs^ e) {
+	UpdateDisconnectionAction^ action =
+		gcnew UpdateDisconnectionAction(this, &Wagner::WagnerForm::UpdateDataFrameDisconnected);
+	this->Invoke(action);
 }
 
 void Wagner::WagnerForm::OnHexapodDisconnected(System::Object^ sender, System::EventArgs^ e) {
 	UpdateDisconnectionAction^ action = 
-		gcnew UpdateDisconnectionAction(this, &Wagner::WagnerForm::UpdateClientDisconnected);
-	this->Invoke(action, 0XD2);
-}
-
-void Wagner::WagnerForm::UpdateClientDisconnected(int32_t app) {
-	switch (app) {
-	case FOCUS:
-		chatTextBox->Text += "Focus Отключен\r\n";
-		cnctToFocus->ForeColor = System::Drawing::Color::DarkGreen;
-		cnctToFocus->Text = "Подключить Focus";
-		break;
-	case HEXAPOD:
-		chatTextBox->Text += "Hexapod Отключен\r\n";
-		cnctToHexapod->ForeColor = System::Drawing::Color::DarkGreen;
-		cnctToHexapod->Text = "Подключить Hexapod";
-	}
+		gcnew UpdateDisconnectionAction(this, &Wagner::WagnerForm::UpdateHexapodDisconnected);
+	this->Invoke(action);
 }
 
 #pragma endregion
@@ -259,7 +312,7 @@ System::Collections::Generic::List<uint32_t>^ Wagner::WagnerForm::getArgsFromStr
 	return args;
 }
 
-bool Wagner::WagnerForm::functionParser(String^ s) {
+bool Wagner::WagnerForm::isFunctionValid(String^ s) {
 	bool isCorrectName = false;
 	bool isCorrectArgs = false;
 	int startOfArgs = s->IndexOf("(") + 1;
@@ -293,7 +346,7 @@ void Wagner::WagnerForm::ValidateText() {
 		int start = CyclogrammTextBox->GetFirstCharIndexFromLine(i);
 		int length = CyclogrammTextBox->Lines[i]->Length;
 		CyclogrammTextBox->Select(start, length);
-		if (!functionParser(textLines[i])) {
+		if (!isFunctionValid(textLines[i])) {
 			CyclogrammTextBox->SelectionFont = gcnew System::Drawing::Font(CyclogrammTextBox->SelectionFont, FontStyle::Underline);
 			CyclogrammTextBox->SelectionColor = Color::DarkBlue;
 			isScriptValid = false;
@@ -310,12 +363,20 @@ System::Void Wagner::WagnerForm::CyclogrammTextBox_Leave(System::Object^ sender,
 	ValidateText();
 }
 
+System::String^ Wagner::WagnerForm::getAppByFuncName(String^ funcName) {
+	if (FocusFuncs->Contains(funcName))
+		return "Focus";
+	else if(DataFrameFuncs->Contains(funcName))
+		return "DataFrame";
+	else if (HexapodFuncs->Contains(funcName))
+		return "Hexapod";
+}
+
 #pragma endregion
 
 #pragma region Funcs
 
 bool Wagner::WagnerForm::GetPosition(uint32_t data) {
-
 	WagnerPacket^ packet = gcnew WagnerPacket();
 
 	packet->command = GET_POSITION;
@@ -401,19 +462,19 @@ System::Void Wagner::WagnerForm::DoCyclogrammWorker_DoWork(System::Object^ sende
 		}
 
 		try {
-
 			String^ funcName = getFunctionFromString(commands[StepCount - 1]);
 			auto args = getArgsFromString(commands[StepCount - 1]);
 			bool result = funcs[funcName](args->Count == 0 ? 0 : args[0]);
+			String^ app = getAppByFuncName(funcName);
 
 			if (!result) {
-				MessageBox::Show(String::Format(gcnew String("Потеряно соединение с {0}\n"), "Asa"),
+				MessageBox::Show(String::Format(gcnew String("Потеряно соединение с {0}\n"), app),
 					Text, MessageBoxButtons::OK, MessageBoxIcon::Information);
 				isPause = true;
 				goto connectionLost;
 			}
 
-			Tasks::Task<CavemanTcp::ReadResult^>^ rr = FocusClient->ReadWithTimeoutAsync(600000, size, CancelReading->Token);
+			Tasks::Task<CavemanTcp::ReadResult^>^ rr = connections[app]->ReadWithTimeoutAsync(600000, size, CancelReading->Token);
 			isReading = true;
 			rr->Wait();
 
@@ -461,7 +522,6 @@ System::Void Wagner::WagnerForm::DoCyclogrammWorker_RunWorkerCompleted(System::O
 	StartButton->Enabled = true;
 	PauseButton->Enabled = false;
 	StopButton->Enabled = false;
-
 
 	FocusCommandListBox->Enabled = false;
 	FocusCommandListBox->Enabled = false;
