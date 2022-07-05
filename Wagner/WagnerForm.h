@@ -53,7 +53,7 @@ namespace Wagner {
 		bool isPause = false;
 		bool isReading = false;
 		int StepCount = 1;
-		CancellationTokenSource^ CancelReading = gcnew CancellationTokenSource();
+		CancellationTokenSource^ CancelReading;
 		AutoResetEvent^ pauseEvent = gcnew AutoResetEvent(false);
 
 	public:

@@ -138,6 +138,9 @@
     <Reference Include="LastSummerSmile">
       <HintPath>libs\LastSummerSmile.dll</HintPath>
     </Reference>
+    <Reference Include="Newtonsoft.Json">
+      <HintPath>libs\Newtonsoft.Json.dll</HintPath>
+    </Reference>
     <Reference Include="SimpleUdp">
       <HintPath>libs\SimpleUdp.dll</HintPath>
     </Reference>
