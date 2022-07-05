@@ -2,18 +2,27 @@
 #include <iostream>
 
 enum Commands {
-	WHO_ARE_YOU = 0,
-	GET_POSITION,
-	MOVE_TO,
-	PARK,
-	GET_ERRORS,
-	RESET_ERRORS
+	WHO_ARE_YOU = 10,
+	GET_POSITION = 20,
+	MOVE_TO = 30,
+	GET_ERRORS = 40,
+	RESET_ERRORS = 50
+};
+
+enum ErrorCode {
+	APP_IS_BUSY = 0x18704,
+	REF_POINT_NOT_CAPTURED,
+	SENSOR_ERROR,
+	STOPPED_IN_FOCUSAPP,
+	POSITIONING_ERROR,
+	WRONG_DIRECTION,
+	NOT_MOVING,
+	UNKNOWN_COMMAND
 };
 
 enum Apps {
 	FOCUS = 0xD0,
-	DATAFRAME,
-	HEXAPOD, 
+	DATAFRAME = 0xDE,
 };
 
 namespace Wagner {
@@ -26,7 +35,7 @@ namespace Wagner {
 	using namespace System::Collections::Generic;
 	using namespace System::Runtime::InteropServices;
 	using namespace System::Threading;
-
+	using namespace SimpleUdp;
 	using namespace CavemanTcp;
 	/// <summary>
 	/// Summary for WagnerForm
@@ -55,10 +64,11 @@ namespace Wagner {
 
 		CavemanTcpClient^ FocusClient;
 		CavemanTcpClient^ DataFrameClient;
-		CavemanTcpClient^ HexapodClient;
+		UdpEndpoint^ HexapodClient;
 
 		Dictionary<String^, ExecuteCommand^>^ funcs = gcnew Dictionary<String^, ExecuteCommand^>();
 		Dictionary<String^, CavemanTcpClient^>^ connections = gcnew Dictionary<String^, CavemanTcpClient^>();
+
 		List<String^>^ FocusFuncs = gcnew List<String^>();
 		List<String^>^ DataFrameFuncs = gcnew List<String^>();
 		List<String^>^ HexapodFuncs = gcnew List<String^>();
@@ -69,7 +79,12 @@ namespace Wagner {
 	private: System::Windows::Forms::ListBox^ HexapodCommandListBox;
 	private: System::Windows::Forms::TextBox^ FocusIpPortTB;
 	private: System::Windows::Forms::TextBox^ DataFrameIpPortTB;
-	private: System::Windows::Forms::TextBox^ HexapodIpPortTB;
+	private: System::Windows::Forms::TextBox^ HexapodIpTB;
+	private: System::Windows::Forms::TextBox^ HexapodPortTB;
+
+
+
+
 	private: System::Windows::Forms::ListBox^ DataFrameCommandListBox;
 
 	public:
@@ -142,14 +157,15 @@ namespace Wagner {
 			this->HexapodCommandListBox = (gcnew System::Windows::Forms::ListBox());
 			this->FocusIpPortTB = (gcnew System::Windows::Forms::TextBox());
 			this->DataFrameIpPortTB = (gcnew System::Windows::Forms::TextBox());
-			this->HexapodIpPortTB = (gcnew System::Windows::Forms::TextBox());
+			this->HexapodIpTB = (gcnew System::Windows::Forms::TextBox());
+			this->HexapodPortTB = (gcnew System::Windows::Forms::TextBox());
 			this->SuspendLayout();
 			// 
 			// PauseButton
 			// 
 			this->PauseButton->Enabled = false;
 			this->PauseButton->Location = System::Drawing::Point(8, 252);
-			this->PauseButton->Margin = System::Windows::Forms::Padding(4, 4, 4, 4);
+			this->PauseButton->Margin = System::Windows::Forms::Padding(4);
 			this->PauseButton->Name = L"PauseButton";
 			this->PauseButton->Size = System::Drawing::Size(100, 28);
 			this->PauseButton->TabIndex = 4;
@@ -161,7 +177,7 @@ namespace Wagner {
 			// 
 			this->StopButton->Enabled = false;
 			this->StopButton->Location = System::Drawing::Point(116, 217);
-			this->StopButton->Margin = System::Windows::Forms::Padding(4, 4, 4, 4);
+			this->StopButton->Margin = System::Windows::Forms::Padding(4);
 			this->StopButton->Name = L"StopButton";
 			this->StopButton->Size = System::Drawing::Size(100, 28);
 			this->StopButton->TabIndex = 5;
@@ -173,7 +189,7 @@ namespace Wagner {
 			// 
 			this->StartButton->ImageAlign = System::Drawing::ContentAlignment::MiddleLeft;
 			this->StartButton->Location = System::Drawing::Point(8, 217);
-			this->StartButton->Margin = System::Windows::Forms::Padding(4, 4, 4, 4);
+			this->StartButton->Margin = System::Windows::Forms::Padding(4);
 			this->StartButton->Name = L"StartButton";
 			this->StartButton->Size = System::Drawing::Size(100, 28);
 			this->StartButton->TabIndex = 7;
@@ -184,7 +200,7 @@ namespace Wagner {
 			// ExpandButton
 			// 
 			this->ExpandButton->Location = System::Drawing::Point(713, 225);
-			this->ExpandButton->Margin = System::Windows::Forms::Padding(4, 4, 4, 4);
+			this->ExpandButton->Margin = System::Windows::Forms::Padding(4);
 			this->ExpandButton->Name = L"ExpandButton";
 			this->ExpandButton->Size = System::Drawing::Size(27, 207);
 			this->ExpandButton->TabIndex = 8;
@@ -203,7 +219,7 @@ namespace Wagner {
 					L"resetErrors"
 			});
 			this->FocusCommandListBox->Location = System::Drawing::Point(748, 50);
-			this->FocusCommandListBox->Margin = System::Windows::Forms::Padding(4, 4, 4, 4);
+			this->FocusCommandListBox->Margin = System::Windows::Forms::Padding(4);
 			this->FocusCommandListBox->Name = L"FocusCommandListBox";
 			this->FocusCommandListBox->Size = System::Drawing::Size(175, 184);
 			this->FocusCommandListBox->TabIndex = 10;
@@ -241,7 +257,7 @@ namespace Wagner {
 			this->CyclogrammTextBox->Font = (gcnew System::Drawing::Font(L"Microsoft Sans Serif", 9.75F, System::Drawing::FontStyle::Regular,
 				System::Drawing::GraphicsUnit::Point, static_cast<System::Byte>(204)));
 			this->CyclogrammTextBox->Location = System::Drawing::Point(8, 322);
-			this->CyclogrammTextBox->Margin = System::Windows::Forms::Padding(4, 4, 4, 4);
+			this->CyclogrammTextBox->Margin = System::Windows::Forms::Padding(4);
 			this->CyclogrammTextBox->Name = L"CyclogrammTextBox";
 			this->CyclogrammTextBox->Size = System::Drawing::Size(699, 358);
 			this->CyclogrammTextBox->TabIndex = 14;
@@ -251,7 +267,7 @@ namespace Wagner {
 			// ClearCyclogrammButton
 			// 
 			this->ClearCyclogrammButton->Location = System::Drawing::Point(116, 252);
-			this->ClearCyclogrammButton->Margin = System::Windows::Forms::Padding(4, 4, 4, 4);
+			this->ClearCyclogrammButton->Margin = System::Windows::Forms::Padding(4);
 			this->ClearCyclogrammButton->Name = L"ClearCyclogrammButton";
 			this->ClearCyclogrammButton->Size = System::Drawing::Size(100, 28);
 			this->ClearCyclogrammButton->TabIndex = 15;
@@ -285,7 +301,7 @@ namespace Wagner {
 			this->cnctToDataFrame->ForeColor = System::Drawing::Color::DarkGreen;
 			this->cnctToDataFrame->ImageAlign = System::Drawing::ContentAlignment::MiddleLeft;
 			this->cnctToDataFrame->Location = System::Drawing::Point(8, 113);
-			this->cnctToDataFrame->Margin = System::Windows::Forms::Padding(4, 4, 4, 4);
+			this->cnctToDataFrame->Margin = System::Windows::Forms::Padding(4);
 			this->cnctToDataFrame->Name = L"cnctToDataFrame";
 			this->cnctToDataFrame->Size = System::Drawing::Size(208, 28);
 			this->cnctToDataFrame->TabIndex = 17;
@@ -298,7 +314,7 @@ namespace Wagner {
 			this->cnctToFocus->ForeColor = System::Drawing::Color::DarkGreen;
 			this->cnctToFocus->ImageAlign = System::Drawing::ContentAlignment::MiddleLeft;
 			this->cnctToFocus->Location = System::Drawing::Point(8, 46);
-			this->cnctToFocus->Margin = System::Windows::Forms::Padding(4, 4, 4, 4);
+			this->cnctToFocus->Margin = System::Windows::Forms::Padding(4);
 			this->cnctToFocus->Name = L"cnctToFocus";
 			this->cnctToFocus->Size = System::Drawing::Size(208, 28);
 			this->cnctToFocus->TabIndex = 18;
@@ -311,7 +327,7 @@ namespace Wagner {
 			this->cnctToHexapod->ForeColor = System::Drawing::Color::DarkGreen;
 			this->cnctToHexapod->ImageAlign = System::Drawing::ContentAlignment::MiddleLeft;
 			this->cnctToHexapod->Location = System::Drawing::Point(8, 181);
-			this->cnctToHexapod->Margin = System::Windows::Forms::Padding(4, 4, 4, 4);
+			this->cnctToHexapod->Margin = System::Windows::Forms::Padding(4);
 			this->cnctToHexapod->Name = L"cnctToHexapod";
 			this->cnctToHexapod->Size = System::Drawing::Size(208, 28);
 			this->cnctToHexapod->TabIndex = 19;
@@ -326,7 +342,7 @@ namespace Wagner {
 			this->DataFrameCommandListBox->FormattingEnabled = true;
 			this->DataFrameCommandListBox->ItemHeight = 20;
 			this->DataFrameCommandListBox->Location = System::Drawing::Point(748, 265);
-			this->DataFrameCommandListBox->Margin = System::Windows::Forms::Padding(4, 4, 4, 4);
+			this->DataFrameCommandListBox->Margin = System::Windows::Forms::Padding(4);
 			this->DataFrameCommandListBox->Name = L"DataFrameCommandListBox";
 			this->DataFrameCommandListBox->Size = System::Drawing::Size(175, 184);
 			this->DataFrameCommandListBox->TabIndex = 20;
@@ -340,7 +356,7 @@ namespace Wagner {
 			this->HexapodCommandListBox->ItemHeight = 20;
 			this->HexapodCommandListBox->Items->AddRange(gcnew cli::array< System::Object^  >(3) { L"moveLinear", L"moveAngular", L"moveToZero" });
 			this->HexapodCommandListBox->Location = System::Drawing::Point(747, 480);
-			this->HexapodCommandListBox->Margin = System::Windows::Forms::Padding(4, 4, 4, 4);
+			this->HexapodCommandListBox->Margin = System::Windows::Forms::Padding(4);
 			this->HexapodCommandListBox->Name = L"HexapodCommandListBox";
 			this->HexapodCommandListBox->Size = System::Drawing::Size(175, 184);
 			this->HexapodCommandListBox->TabIndex = 21;
@@ -349,7 +365,7 @@ namespace Wagner {
 			// FocusIpPortTB
 			// 
 			this->FocusIpPortTB->Location = System::Drawing::Point(8, 14);
-			this->FocusIpPortTB->Margin = System::Windows::Forms::Padding(4, 4, 4, 4);
+			this->FocusIpPortTB->Margin = System::Windows::Forms::Padding(4);
 			this->FocusIpPortTB->Name = L"FocusIpPortTB";
 			this->FocusIpPortTB->ReadOnly = true;
 			this->FocusIpPortTB->Size = System::Drawing::Size(207, 22);
@@ -359,29 +375,40 @@ namespace Wagner {
 			// DataFrameIpPortTB
 			// 
 			this->DataFrameIpPortTB->Location = System::Drawing::Point(8, 81);
-			this->DataFrameIpPortTB->Margin = System::Windows::Forms::Padding(4, 4, 4, 4);
+			this->DataFrameIpPortTB->Margin = System::Windows::Forms::Padding(4);
 			this->DataFrameIpPortTB->Name = L"DataFrameIpPortTB";
 			this->DataFrameIpPortTB->ReadOnly = true;
 			this->DataFrameIpPortTB->Size = System::Drawing::Size(207, 22);
 			this->DataFrameIpPortTB->TabIndex = 23;
 			this->DataFrameIpPortTB->Text = L"127.0.0.1:6000";
 			// 
-			// HexapodIpPortTB
+			// HexapodIpTB
 			// 
-			this->HexapodIpPortTB->Location = System::Drawing::Point(8, 149);
-			this->HexapodIpPortTB->Margin = System::Windows::Forms::Padding(4, 4, 4, 4);
-			this->HexapodIpPortTB->Name = L"HexapodIpPortTB";
-			this->HexapodIpPortTB->ReadOnly = true;
-			this->HexapodIpPortTB->Size = System::Drawing::Size(207, 22);
-			this->HexapodIpPortTB->TabIndex = 24;
-			this->HexapodIpPortTB->Text = L"127.0.0.1:5000";
+			this->HexapodIpTB->Location = System::Drawing::Point(8, 151);
+			this->HexapodIpTB->Margin = System::Windows::Forms::Padding(4);
+			this->HexapodIpTB->Name = L"HexapodIpTB";
+			this->HexapodIpTB->ReadOnly = true;
+			this->HexapodIpTB->Size = System::Drawing::Size(126, 22);
+			this->HexapodIpTB->TabIndex = 24;
+			this->HexapodIpTB->Text = L"127.0.0.1";
+			// 
+			// HexapodPortTB
+			// 
+			this->HexapodPortTB->Location = System::Drawing::Point(142, 151);
+			this->HexapodPortTB->Margin = System::Windows::Forms::Padding(4);
+			this->HexapodPortTB->Name = L"HexapodPortTB";
+			this->HexapodPortTB->ReadOnly = true;
+			this->HexapodPortTB->Size = System::Drawing::Size(73, 22);
+			this->HexapodPortTB->TabIndex = 25;
+			this->HexapodPortTB->Text = L"6000";
 			// 
 			// WagnerForm
 			// 
 			this->AutoScaleDimensions = System::Drawing::SizeF(8, 16);
 			this->AutoScaleMode = System::Windows::Forms::AutoScaleMode::Font;
 			this->ClientSize = System::Drawing::Size(939, 686);
-			this->Controls->Add(this->HexapodIpPortTB);
+			this->Controls->Add(this->HexapodPortTB);
+			this->Controls->Add(this->HexapodIpTB);
 			this->Controls->Add(this->DataFrameIpPortTB);
 			this->Controls->Add(this->FocusIpPortTB);
 			this->Controls->Add(this->HexapodCommandListBox);
@@ -401,7 +428,7 @@ namespace Wagner {
 			this->Controls->Add(this->PauseButton);
 			this->FormBorderStyle = System::Windows::Forms::FormBorderStyle::FixedSingle;
 			this->Icon = (cli::safe_cast<System::Drawing::Icon^>(resources->GetObject(L"$this.Icon")));
-			this->Margin = System::Windows::Forms::Padding(4, 4, 4, 4);
+			this->Margin = System::Windows::Forms::Padding(4);
 			this->MaximizeBox = false;
 			this->Name = L"WagnerForm";
 			this->StartPosition = System::Windows::Forms::FormStartPosition::CenterScreen;
@@ -429,7 +456,7 @@ namespace Wagner {
 	private: System::Void ClearCyclogrammButton_Click(System::Object^ sender, System::EventArgs^ e);
 
 		   void OnDragDrop(System::Object^ sender, System::Windows::Forms::DragEventArgs^ e);
-	
+
 	private: System::Void FocusCommandListBox_SelectedIndexChanged(System::Object^ sender, System::EventArgs^ e);
 
 	private: System::Void DataFrameCommandListBox_SelectedIndexChanged(System::Object^ sender, System::EventArgs^ e);
@@ -445,15 +472,16 @@ namespace Wagner {
 #pragma endregion
 
 #pragma region Server
-		   
+
 		   void UpdateChatBox(String^ text);
 		   void UpdateFocusDisconnected();
 		   void UpdateDataFrameDisconnected();
-		   void UpdateHexapodDisconnected();
+		   void UpdateHexapodConnected();
 
 		   void OnFocusDisconnected(System::Object^ sender, System::EventArgs^ e);
 		   void OnDataFrameDisconnected(System::Object^ sender, System::EventArgs^ e);
-		   void OnHexapodDisconnected(System::Object^ sender, System::EventArgs^ e);
+		   void OnEndpointDetected(System::Object^ sender, SimpleUdp::EndpointMetadata^ e);
+		   void OnDatagramReceived(System::Object^ sender, SimpleUdp::Datagram^ e);
 
 #pragma endregion
 
@@ -493,14 +521,18 @@ namespace Wagner {
 
 		   bool ResetErrors(uint32_t data);
 
+		   bool ParsePacket(WagnerPacket^ packet);
+
 #pragma endregion
 
 #pragma region Cyclogramm
 
+		   void OnPausedHandler();
+
 	private: System::Void DoCyclogrammWorker_DoWork(System::Object^ sender, System::ComponentModel::DoWorkEventArgs^ e);
 
 	private: System::Void DoCyclogrammWorker_ProgressChanged(System::Object^ sender, System::ComponentModel::ProgressChangedEventArgs^ e);
-	
+
 	private: System::Void DoCyclogrammWorker_RunWorkerCompleted(System::Object^ sender, System::ComponentModel::RunWorkerCompletedEventArgs^ e);
 
 #pragma endregion
