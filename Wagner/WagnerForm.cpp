@@ -28,6 +28,7 @@ System::Void Wagner::WagnerForm::StartButton_Click(System::Object^ sender, Syste
 		pauseEvent->Set();
 		return;
 	}
+
 	FocusCommandListBox->Enabled = false;
 	DataFrameCommandListBox->Enabled = false;
 	HexapodCommandListBox->Enabled = false;
@@ -45,15 +46,15 @@ System::Void Wagner::WagnerForm::StartButton_Click(System::Object^ sender, Syste
 	rxStatus = INITIAL_STATUS;
 	auto commands = CyclogrammTextBox->Text->Split(gcnew array<String^>{"\n"}, StringSplitOptions::RemoveEmptyEntries);
 	CyclogrammProgressBar->Maximum = commands->Length;
+	CyclogrammProgressBar->Value = 0;
 
 	DoCyclogrammWorker->RunWorkerAsync(commands);
 }
 
 System::Void Wagner::WagnerForm::PauseButton_Click(System::Object^ sender, System::EventArgs^ e) {
 	isPause = true;
-	PauseButton->Enabled = false;
 
-	if (rxStatus = ON_WAITING_MSG) {
+	if (rxStatus == ON_WAITING_MSG) {
 		System::Windows::Forms::DialogResult result = MessageBox::Show("Текущая команда не завершена. Хотите ли Вы дождаться завершения команды?",
 			"Отмена команды", MessageBoxButtons::YesNo, MessageBoxIcon::Question);
 		if (result == System::Windows::Forms::DialogResult::No) {
@@ -71,7 +72,7 @@ System::Void Wagner::WagnerForm::StopButton_Click(System::Object^ sender, System
 		isPause = false;
 	}
 
-	if (rxStatus = ON_WAITING_MSG) {
+	if (rxStatus == ON_WAITING_MSG) {
 		System::Windows::Forms::DialogResult result = MessageBox::Show("Текущая команда не завершена. Хотите ли Вы дождаться завершения команды?",
 			"Отмена команды", MessageBoxButtons::YesNo, MessageBoxIcon::Question);
 		if (result == System::Windows::Forms::DialogResult::No) {
@@ -112,8 +113,6 @@ System::Void Wagner::WagnerForm::WagnerForm_Load(System::Object^ sender, System:
 	funcs->Add("park", gcnew ExecuteCommand(this, &WagnerForm::Park));
 	funcs->Add("getErrors", gcnew ExecuteCommand(this, &WagnerForm::GetErrors));
 	funcs->Add("resetErrors", gcnew ExecuteCommand(this, &WagnerForm::ResetErrors));
-
-	
 }
 
 System::Void Wagner::WagnerForm::FocusCommandListBox_SelectedIndexChanged(System::Object^ sender, System::EventArgs^ e) {
@@ -192,16 +191,22 @@ void Wagner::WagnerForm::UpdateFocusDisconnected() {
 	chatTextBox->Text += "Focus Отключен\r\n";
 	cnctToFocus->ForeColor = System::Drawing::Color::DarkGreen;
 	cnctToFocus->Text = "Подключить Focus";
+
+	if (rxStatus == ON_WAITING_MSG) {
+		rxStatus = CANCELED;
+		waitMessage->Set();
+	}
+	isPause = true;
 }
 
 void Wagner::WagnerForm::OnFocusConnected(System::Object^ sender, SuperSimpleTcp::ConnectionEventArgs^ e) {
 	UpdateAction^ action = gcnew UpdateAction(this, &Wagner::WagnerForm::UpdateFocusConnected);
-	this->Invoke(action);
+	this->BeginInvoke(action);
 }
 
 void Wagner::WagnerForm::OnFocusDisconnected(System::Object^ sender, SuperSimpleTcp::ConnectionEventArgs^ e) {
 	UpdateAction^ action = gcnew UpdateAction(this, &Wagner::WagnerForm::UpdateFocusDisconnected);
-	this->Invoke(action);
+	this->BeginInvoke(action);
 }
 
 void Wagner::WagnerForm::OnFocusDataReceived(System::Object^ sender, SuperSimpleTcp::DataReceivedEventArgs^ e) {
@@ -209,7 +214,7 @@ void Wagner::WagnerForm::OnFocusDataReceived(System::Object^ sender, SuperSimple
 	if (rxStatus = ON_WAITING_MSG) {
 		rxStatus = READING_PACKET;
 		ParsePackets^ action = gcnew ParsePackets(this, &WagnerForm::ParsePacket);
-		this->Invoke(action);
+		this->BeginInvoke(action, txMsg);
 	}
 }
 
@@ -437,71 +442,71 @@ bool Wagner::WagnerForm::ResetErrors(uint32_t data) {
 bool Wagner::WagnerForm::ParsePacket(WagnerPacket^ packet) {
 	if (packet->command == GET_POSITION) {
 		float position = ((float)packet->data) / 1000.0;
-		chatTextBox->Text += String::Format(gcnew String("Текущая позиция {0}\n"), System::Convert::ToString(position));
+		chatTextBox->Text += String::Format(gcnew String("Текущая позиция {0}\r\n"), System::Convert::ToString(position));
 		waitMessage->Set();
 		return true;
 	}
 	else if (packet->command == MOVE_TO) {
 		switch (packet->data) {
 		case APP_IS_BUSY:
-			chatTextBox->Text += "Wagner не может получить доступ к FocusAPP, так как это приложение занято. Повторите попытку.\n";
+			chatTextBox->Text += "Wagner не может получить доступ к FocusAPP, так как это приложение занято. Повторите попытку.\r\n";
 			waitMessage->Set();
 			return false;
 		case REF_POINT_NOT_CAPTURED:
-			chatTextBox->Text += "Референтная метка не захвачена. Захватите реф.метку через FocusAPP и повторите попытку.\n";
+			chatTextBox->Text += "Референтная метка не захвачена. Захватите реф.метку через FocusAPP и повторите попытку.\r\n";
 			waitMessage->Set();
 			return false;
 		case SENSOR_ERROR:
-			chatTextBox->Text += "Ошибка датчика.Проверьте соединение и повторите попытку.\n";
+			chatTextBox->Text += "Ошибка датчика.Проверьте соединение и повторите попытку.\r\n";
 			waitMessage->Set();
 			return false;
 		case STOPPED_IN_FOCUSAPP:
-			chatTextBox->Text += "Движение в точку остановлено.\n";
+			chatTextBox->Text += "Движение в точку остановлено.\r\n";
 			waitMessage->Set();
 			return false;
 		case POSITIONING_ERROR:
-			chatTextBox->Text += "Ошибка позиционирования.\n";
+			chatTextBox->Text += "Ошибка позиционирования.\r\n";
 			waitMessage->Set();
 			return false;
 		case WRONG_DIRECTION:
-			chatTextBox->Text += "Ошибка направления.\n";
+			chatTextBox->Text += "Ошибка направления.\r\n";
 			waitMessage->Set();
 			return false;
 		case NOT_MOVING:
-			chatTextBox->Text += "Нет движения.\n";
+			chatTextBox->Text += "Нет движения.\r\n";
 			waitMessage->Set();
 			return false;
 		case UNKNOWN_COMMAND:
-			chatTextBox->Text += "Неизвестная команда.\n";
+			chatTextBox->Text += "Неизвестная команда.\r\n";
 			waitMessage->Set();
 			return false;
 		default:
 			float position = ((float)packet->data) / 1000.0;
-			chatTextBox->Text += String::Format(gcnew String("Текущая позиция {0}\n"), System::Convert::ToString(position));
+			chatTextBox->Text += String::Format(gcnew String("Текущая позиция {0}\r\n"), System::Convert::ToString(position));
 			waitMessage->Set();
 			return true;
 		}
 	}
 	else if (packet->command == GET_ERRORS) {
 		uint32_t ammountOfError = packet->data;
-		chatTextBox->Text += String::Format(gcnew String("Количество ошибок {0}\n"), System::Convert::ToString(ammountOfError));
+		chatTextBox->Text += String::Format(gcnew String("Количество ошибок {0}.\r\n"), System::Convert::ToString(ammountOfError));
 		waitMessage->Set();
 		return true;
 	}
 	else if (packet->command == RESET_ERRORS) {
 		switch (packet->data) {
 		case APP_IS_BUSY:
-			chatTextBox->Text += "Wagner не может получить доступ к FocusAPP, так как это приложение занято. Повторите попытку.\n";
+			chatTextBox->Text += "Wagner не может получить доступ к FocusAPP, так как это приложение занято. Повторите попытку.\r\n";
 			waitMessage->Set();
 			return false;
 		default:
-			chatTextBox->Text += "Ошибки сброшены.\n";
+			chatTextBox->Text += "Ошибки сброшены.\r\n";
 			waitMessage->Set();
 			return true;
 		}
 	}
 	else {
-		chatTextBox->Text += "Неверный формат пакета.\n";
+		chatTextBox->Text += "Неверный формат пакета.\r\n";
 		waitMessage->Set();
 		return false;
 	}
@@ -541,7 +546,7 @@ System::Void Wagner::WagnerForm::DoCyclogrammWorker_DoWork(System::Object^ sende
 
 			bool isConnected = funcs[funcName](args->Count == 0 ? 0 : args[0]);
 			if (!isConnected) {
-				MessageBox::Show(String::Format(gcnew String("Потеряно соединение с {0}\n"), app),
+				MessageBox::Show(String::Format(gcnew String("Нет соединения с {0}\n"), app),
 					Text, MessageBoxButtons::OK, MessageBoxIcon::Information);
 				isPause = true;
 				goto connectionLost;
@@ -549,13 +554,14 @@ System::Void Wagner::WagnerForm::DoCyclogrammWorker_DoWork(System::Object^ sende
 			waitMessage->WaitOne(600000);
 
 			if (rxStatus == ON_WAITING_MSG) {
+				rxStatus = INITIAL_STATUS;
 				isPause = true;
 				Update^ action = gcnew Update(this, &Wagner::WagnerForm::UpdateChatBox);
-				this->Invoke(action, "Таймаут запроса");
+				this->Invoke(action, "Таймаут запроса\r\n");
 			}
 			else if (rxStatus == CANCELED) {
 				Update^ action = gcnew Update(this, &Wagner::WagnerForm::UpdateChatBox);
-				this->Invoke(action, "Запрос отменен");
+				this->Invoke(action, "Запрос отменен\r\n");
 			}
 			else {
 				StepCount++;
