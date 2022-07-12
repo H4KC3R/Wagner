@@ -135,8 +135,16 @@
     <Reference Include="LastSummerSmile">
       <HintPath>libs\LastSummerSmile.dll</HintPath>
     </Reference>
+<<<<<<< HEAD
     <Reference Include="SuperSimpleTcp">
       <HintPath>libs\SuperSimpleTcp.dll</HintPath>
+=======
+    <Reference Include="Newtonsoft.Json">
+      <HintPath>libs\Newtonsoft.Json.dll</HintPath>
+    </Reference>
+    <Reference Include="SimpleUdp">
+      <HintPath>libs\SimpleUdp.dll</HintPath>
+>>>>>>> c2f8491602625a3a270598d99206dc7ce1885627
     </Reference>
     <Reference Include="System" />
     <Reference Include="System.Core" />

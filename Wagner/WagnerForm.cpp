@@ -14,6 +14,12 @@ System::Void Wagner::WagnerForm::ExpandButton_Click(System::Object^ sender, Syst
 }
 
 System::Void Wagner::WagnerForm::StartButton_Click(System::Object^ sender, System::EventArgs^ e) {
+	if (CyclogrammTextBox->Text->Length == 0)
+		return;
+	if (!isScriptValid)
+		return;
+
+	CancelReading = gcnew CancellationTokenSource();
 	if (isPause) {
 		StartButton->Enabled = false;
 		PauseButton->Enabled = true;
@@ -23,12 +29,6 @@ System::Void Wagner::WagnerForm::StartButton_Click(System::Object^ sender, Syste
 		pauseEvent->Set();
 		return;
 	}
-
-	if (CyclogrammTextBox->Text->Length == 0)
-		return;
-	if (!isScriptValid)
-		return;
-
 	FocusCommandListBox->Enabled = false;
 	DataFrameCommandListBox->Enabled = false;
 	HexapodCommandListBox->Enabled = false;
@@ -92,12 +92,21 @@ System::Void Wagner::WagnerForm::WagnerForm_Load(System::Object^ sender, System:
 	FocusClient->Events->Disconnected += gcnew System::EventHandler<SuperSimpleTcp::ConnectionEventArgs^>(this, &Wagner::WagnerForm::OnFocusDisconnected);
 	FocusClient->Events->DataReceived += gcnew System::EventHandler<SuperSimpleTcp::DataReceivedEventArgs^>(this, &Wagner::WagnerForm::OnFocusDataReceived);
 
+<<<<<<< HEAD
 	DataFrameClient = gcnew SimpleTcpClient(DataFrameIpPortTB->Text);
 	DataFrameClient->Events->Connected += gcnew System::EventHandler<SuperSimpleTcp::ConnectionEventArgs^>(this, &Wagner::WagnerForm::OnDataFrameConnected);
 	DataFrameClient->Events->Disconnected += gcnew System::EventHandler<SuperSimpleTcp::ConnectionEventArgs^>(this, &Wagner::WagnerForm::OnDataFrameDisconnected);
 	DataFrameClient->Events->DataReceived += gcnew System::EventHandler<SuperSimpleTcp::DataReceivedEventArgs^>(this, &Wagner::WagnerForm::OnDataFrameDataReceived);
 
 	HexapodClient = gcnew UdpClient(HexapodIpTB->Text, Convert::ToInt64(HexapodPortTB->Text));
+=======
+	DataFrameClient = gcnew CavemanTcpClient(DataFrameIpPortTB->Text);
+	DataFrameClient->Events->ClientDisconnected += gcnew System::EventHandler(this, &Wagner::WagnerForm::OnDataFrameDisconnected);
+
+	/*HexapodClient = gcnew UdpEndpoint(HexapodIpTB->Text, System::Convert::ToInt64(HexapodPortTB->Text));
+	HexapodClient->EndpointDetected += gcnew System::EventHandler<SimpleUdp::EndpointMetadata^>(this, &Wagner::WagnerForm::OnEndpointDetected);
+	HexapodClient->DatagramReceived += gcnew System::EventHandler<SimpleUdp::Datagram^>(this, &Wagner::WagnerForm::OnDatagramReceived);*/
+>>>>>>> c2f8491602625a3a270598d99206dc7ce1885627
 
 	FocusFuncs->Add("getPosition");
 	FocusFuncs->Add("moveTo");
@@ -135,13 +144,48 @@ System::Void Wagner::WagnerForm::HexapodCommandListBox_SelectedIndexChanged(Syst
 System::Void Wagner::WagnerForm::cnctToFocus_Click(System::Object^ sender, System::EventArgs^ e) {
 	if (FocusClient->IsConnected)
 		FocusClient->Disconnect();
+<<<<<<< HEAD
 	else {
 		try {
 			FocusClient->Connect();
 		}
 		catch(Exception^ ex) {
 			MessageBox::Show(ex->Message, Text, MessageBoxButtons::OK, MessageBoxIcon::Information);
+=======
+	} else {
+		this->Enabled = false;
+		try {
+			FocusClient->Connect(1000);
 		}
+		catch(Exception^ e) {
+			MessageBox::Show(e->Message, Text, MessageBoxButtons::OK, MessageBoxIcon::Information);
+			this->Enabled = true;
+			return;
+		}
+		WagnerPacket^ packet = gcnew WagnerPacket();
+		packet->command = WHO_ARE_YOU;
+		packet->data = FOCUS;
+		int size = Marshal::SizeOf(packet);
+
+		auto message = getBytes(packet);
+
+		FocusClient->Send(message);
+		ReadResult^ rr = FocusClient->ReadWithTimeout(1000, size);
+
+		if (rr->Status == ReadResultStatus::Success) {
+			packet = fromBytes(rr->Data);
+			if (packet->command == WHO_ARE_YOU && packet->data == 0xDD) {
+				chatTextBox->Text += String::Format(gcnew String("Focus подключен\r\n"));
+				cnctToFocus->ForeColor = System::Drawing::Color::Red;
+				cnctToFocus->Text = "Отключить Focus";
+				this->Enabled = true;
+				return;
+			}
+>>>>>>> c2f8491602625a3a270598d99206dc7ce1885627
+		}
+		chatTextBox->Text += "Попытка соединения c Focus. Авторизация не пройдена\r\n";
+		FocusClient->Disconnect();
+		this->Enabled = true;
 	}
 }
 
@@ -438,13 +482,18 @@ bool Wagner::WagnerForm::ResetErrors(uint32_t data) {
 bool Wagner::WagnerForm::ParsePacket(WagnerPacket^ packet) {
 	if (packet->command == GET_POSITION) {
 		float position = ((float)packet->data) / 1000.0;
+<<<<<<< HEAD
 		chatTextBox->Text += String::Format(gcnew String("Текущая позиция {0}\n"), System::Convert::ToString(position));
 		waitMessage->Set();
+=======
+		chatTextBox->Text += String::Format(gcnew String("Текущая позиция {0}\r\n"), System::Convert::ToString(position));
+>>>>>>> c2f8491602625a3a270598d99206dc7ce1885627
 		return true;
 	}
 	else if (packet->command == MOVE_TO) {
 		switch (packet->data) {
 		case APP_IS_BUSY:
+<<<<<<< HEAD
 			chatTextBox->Text += "Wagner не может получить доступ к FocusAPP, так как это приложение занято. Повторите попытку.\n";
 			waitMessage->Set();
 			return false;
@@ -480,18 +529,51 @@ bool Wagner::WagnerForm::ParsePacket(WagnerPacket^ packet) {
 			float position = ((float)packet->data) / 1000.0;
 			chatTextBox->Text += String::Format(gcnew String("Текущая позиция {0}\n"), System::Convert::ToString(position));
 			waitMessage->Set();
+=======
+			chatTextBox->Text += "Wagner не может получить доступ к FocusAPP, так как это приложение занято. Повторите попытку.\r\n";
+			return false;
+		case REF_POINT_NOT_CAPTURED:
+			chatTextBox->Text += "Референтная метка не захвачена. Захватите реф.метку через FocusAPP и повторите попытку.\r\n";
+			return false;
+		case SENSOR_ERROR:
+			chatTextBox->Text += "Ошибка датчика.Проверьте соединение и повторите попытку.\r\n";
+			return false;
+		case STOPPED_IN_FOCUSAPP:
+			chatTextBox->Text += "Движение в точку остановлено.\r\n";
+			return false;
+		case POSITIONING_ERROR:
+			chatTextBox->Text += "Ошибка позиционирования.\r\n";
+			return false;
+		case WRONG_DIRECTION:
+			chatTextBox->Text += "Ошибка направления.\r\n";
+			return false;
+		case NOT_MOVING:
+			chatTextBox->Text += "Нет движения.\r\n";
+			return false;
+		case UNKNOWN_COMMAND:
+			chatTextBox->Text += "Неизвестная комманда.\r\n";
+			return false;
+		default:
+			float position = ((float)packet->data) / 1000.0;
+			chatTextBox->Text += String::Format(gcnew String("Текущая позиция {0}\r\n"), System::Convert::ToString(position));
+>>>>>>> c2f8491602625a3a270598d99206dc7ce1885627
 			return true;
 		}
 	}
 	else if (packet->command == GET_ERRORS) {
 		uint32_t ammountOfError = packet->data;
+<<<<<<< HEAD
 		chatTextBox->Text += String::Format(gcnew String("Количество ошибок {0}\n"), System::Convert::ToString(ammountOfError));
 		waitMessage->Set();
+=======
+		chatTextBox->Text += String::Format(gcnew String("Количество ошибок {0}\r\n"), System::Convert::ToString(ammountOfError));
+>>>>>>> c2f8491602625a3a270598d99206dc7ce1885627
 		return true;
 	}
 	else if (packet->command == RESET_ERRORS) {
 		switch (packet->data) {
 		case APP_IS_BUSY:
+<<<<<<< HEAD
 			chatTextBox->Text += "Wagner не может получить доступ к FocusAPP, так как это приложение занято. Повторите попытку.\n";
 			waitMessage->Set();
 			return false;
@@ -506,6 +588,15 @@ bool Wagner::WagnerForm::ParsePacket(WagnerPacket^ packet) {
 		waitMessage->Set();
 		return false;
 	}
+=======
+			chatTextBox->Text += "Wagner не может получить доступ к FocusAPP, так как это приложение занято. Повторите попытку.\r\n";
+			return false;
+		default:
+			chatTextBox->Text += "Ошибки сброшены.\r\n";
+			return true;
+		}
+	}	
+>>>>>>> c2f8491602625a3a270598d99206dc7ce1885627
 }
 
 #pragma endregion
@@ -523,7 +614,7 @@ System::Void Wagner::WagnerForm::DoCyclogrammWorker_DoWork(System::Object^ sende
 	int size = Marshal::SizeOf(packet);
 	auto commands = (array<System::String^>^)e->Argument;
 
-	while (StepCount < commands->Length) {
+	while (StepCount <= commands->Length) {
 		if (DoCyclogrammWorker->CancellationPending)
 			break;
 	
@@ -538,10 +629,16 @@ System::Void Wagner::WagnerForm::DoCyclogrammWorker_DoWork(System::Object^ sende
 		try {
 			String^ funcName = getFunctionFromString(commands[StepCount - 1]);
 			auto args = getArgsFromString(commands[StepCount - 1]);
+<<<<<<< HEAD
 			String^ app = getAppByFuncName(funcName);
 
 			bool isConnected = funcs[funcName](args->Count == 0 ? 0 : args[0]);
 
+=======
+			bool isConnected = funcs[funcName](args->Count == 0 ? 0 : args[0]);
+			String^ app = getAppByFuncName(funcName);
+
+>>>>>>> c2f8491602625a3a270598d99206dc7ce1885627
 			if (!isConnected) {
 				MessageBox::Show(String::Format(gcnew String("Потеряно соединение с {0}\n"), app),
 					Text, MessageBoxButtons::OK, MessageBoxIcon::Information);
@@ -550,6 +647,7 @@ System::Void Wagner::WagnerForm::DoCyclogrammWorker_DoWork(System::Object^ sende
 			}
 			waitMessage->WaitOne(600000);
 
+<<<<<<< HEAD
 			if (rxStatus == ON_WAITING_MSG) {
 				isPause = true;
 				Update^ action = gcnew Update(this, &Wagner::WagnerForm::UpdateChatBox);
@@ -562,6 +660,23 @@ System::Void Wagner::WagnerForm::DoCyclogrammWorker_DoWork(System::Object^ sende
 			else {
 				StepCount++;
 				DoCyclogrammWorker->ReportProgress(1);
+=======
+			Tasks::Task<CavemanTcp::ReadResult^>^ rr = connections[app]->ReadWithTimeoutAsync(600000, size, CancelReading->Token);
+			isReading = true;
+			rr->Wait();
+			isReading = false;
+
+			if (rr->Result->Status == ReadResultStatus::Success) {
+				packet = fromBytes(rr->Result->Data);
+				DoCyclogrammWorker->ReportProgress(1, packet);
+				StepCount++;
+			}
+			else {
+				MessageBox::Show(rr->Result->Status.ToString(), Text, MessageBoxButtons::OK, MessageBoxIcon::Information);
+				isPause = true;
+				delete CancelReading;
+				continue;
+>>>>>>> c2f8491602625a3a270598d99206dc7ce1885627
 			}
 		}
 		catch (Exception^ ex) {
@@ -573,7 +688,14 @@ System::Void Wagner::WagnerForm::DoCyclogrammWorker_DoWork(System::Object^ sende
 }
 
 System::Void Wagner::WagnerForm::DoCyclogrammWorker_ProgressChanged(System::Object^ sender, System::ComponentModel::ProgressChangedEventArgs^ e) {
+<<<<<<< HEAD
 	CyclogrammProgressBar->Increment(1);
+=======
+	WagnerPacket^ packet = (WagnerPacket^)e->UserState;
+	if (ParsePacket(packet)) {
+		CyclogrammProgressBar->Increment(1);
+	}
+>>>>>>> c2f8491602625a3a270598d99206dc7ce1885627
 }
 
 System::Void Wagner::WagnerForm::DoCyclogrammWorker_RunWorkerCompleted(System::Object^ sender, System::ComponentModel::RunWorkerCompletedEventArgs^ e) {
@@ -586,17 +708,16 @@ System::Void Wagner::WagnerForm::DoCyclogrammWorker_RunWorkerCompleted(System::O
 	PauseButton->Enabled = false;
 	StopButton->Enabled = false;
 
-	FocusCommandListBox->Enabled = false;
-	FocusCommandListBox->Enabled = false;
-	FocusCommandListBox->Enabled = false;
+	FocusCommandListBox->Enabled = true;
+	FocusCommandListBox->Enabled = true;
+	FocusCommandListBox->Enabled = true;
 
-	cnctToFocus->Enabled = false;
-	cnctToDataFrame->Enabled = false;
-	cnctToHexapod->Enabled = false;
+	cnctToFocus->Enabled = true;
+	cnctToDataFrame->Enabled = true;
+	cnctToHexapod->Enabled = true;
 
 	CyclogrammTextBox->ReadOnly = false;
 	ClearCyclogrammButton->Enabled = true;
-	StartButton->Enabled = true;
 }
 
 #pragma endregion
