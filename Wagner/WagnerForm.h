@@ -1,6 +1,13 @@
 #pragma once
 #include <iostream>
 
+enum ReadStatus {
+	INITIAL_STATUS,
+	ON_WAITING_MSG,
+	CANCELED,
+	READING_PACKET,
+};
+
 enum Commands {
 	WHO_ARE_YOU = 10,
 	GET_POSITION = 20,
@@ -35,8 +42,10 @@ namespace Wagner {
 	using namespace System::Collections::Generic;
 	using namespace System::Runtime::InteropServices;
 	using namespace System::Threading;
-	using namespace SimpleUdp;
-	using namespace CavemanTcp;
+	using namespace System::Net;
+	using namespace System::Net::Sockets;
+	using namespace SuperSimpleTcp;
+
 	/// <summary>
 	/// Summary for WagnerForm
 	/// </summary>
@@ -51,41 +60,28 @@ namespace Wagner {
 		};
 	private:
 		bool isPause = false;
-		bool isReading = false;
+		ReadStatus rxStatus;
 		int StepCount = 1;
-		CancellationTokenSource^ CancelReading = gcnew CancellationTokenSource();
 		AutoResetEvent^ pauseEvent = gcnew AutoResetEvent(false);
+		AutoResetEvent^ waitMessage = gcnew AutoResetEvent(false);
 
 	public:
 		delegate bool ExecuteCommand(uint32_t data);
+		delegate bool ParsePackets(WagnerPacket^ packet);
 		delegate void Update(String^ msg);
-		delegate void UpdateDisconnectionAction();
+		delegate void UpdateAction();
 		bool isScriptValid = false;
 
-		CavemanTcpClient^ FocusClient;
-		CavemanTcpClient^ DataFrameClient;
-		UdpEndpoint^ HexapodClient;
+		SimpleTcpClient^ FocusClient;
+		SimpleTcpClient^ DataFrameClient;
+		UdpClient^ HexapodClient;
 
 		Dictionary<String^, ExecuteCommand^>^ funcs = gcnew Dictionary<String^, ExecuteCommand^>();
-		Dictionary<String^, CavemanTcpClient^>^ connections = gcnew Dictionary<String^, CavemanTcpClient^>();
+		Dictionary<String^, SimpleTcpClient^>^ connections = gcnew Dictionary<String^, SimpleTcpClient^>();
 
 		List<String^>^ FocusFuncs = gcnew List<String^>();
 		List<String^>^ DataFrameFuncs = gcnew List<String^>();
 		List<String^>^ HexapodFuncs = gcnew List<String^>();
-
-	private: System::Windows::Forms::Button^ cnctToDataFrame;
-	private: System::Windows::Forms::Button^ cnctToFocus;
-	private: System::Windows::Forms::Button^ cnctToHexapod;
-	private: System::Windows::Forms::ListBox^ HexapodCommandListBox;
-	private: System::Windows::Forms::TextBox^ FocusIpPortTB;
-	private: System::Windows::Forms::TextBox^ DataFrameIpPortTB;
-	private: System::Windows::Forms::TextBox^ HexapodIpTB;
-	private: System::Windows::Forms::TextBox^ HexapodPortTB;
-
-
-
-
-	private: System::Windows::Forms::ListBox^ DataFrameCommandListBox;
 
 	public:
 		WagnerForm(void)
@@ -107,15 +103,20 @@ namespace Wagner {
 				delete components;
 			}
 		}
-
-
+	private: System::Windows::Forms::ListBox^ DataFrameCommandListBox;
 	private: System::Windows::Forms::Button^ PauseButton;
 	private: System::Windows::Forms::Button^ StopButton;
 	private: System::Windows::Forms::Button^ StartButton;
 	private: System::Windows::Forms::Button^ ExpandButton;
 	private: System::Windows::Forms::ListBox^ FocusCommandListBox;
-
-
+	private: System::Windows::Forms::Button^ cnctToDataFrame;
+	private: System::Windows::Forms::Button^ cnctToFocus;
+	private: System::Windows::Forms::Button^ cnctToHexapod;
+	private: System::Windows::Forms::ListBox^ HexapodCommandListBox;
+	private: System::Windows::Forms::TextBox^ FocusIpPortTB;
+	private: System::Windows::Forms::TextBox^ DataFrameIpPortTB;
+	private: System::Windows::Forms::TextBox^ HexapodIpTB;
+	private: System::Windows::Forms::TextBox^ HexapodPortTB;
 	private: System::Windows::Forms::TextBox^ CommandTB;
 	private: System::Windows::Forms::TextBox^ chatTextBox;
 	private: System::Windows::Forms::RichTextBox^ CyclogrammTextBox;
@@ -390,7 +391,7 @@ namespace Wagner {
 			this->HexapodIpTB->ReadOnly = true;
 			this->HexapodIpTB->Size = System::Drawing::Size(126, 22);
 			this->HexapodIpTB->TabIndex = 24;
-			this->HexapodIpTB->Text = L"127.0.0.1";
+			this->HexapodIpTB->Text = L"192.168.1.10";
 			// 
 			// HexapodPortTB
 			// 
@@ -474,14 +475,20 @@ namespace Wagner {
 #pragma region Server
 
 		   void UpdateChatBox(String^ text);
-		   void UpdateFocusDisconnected();
-		   void UpdateDataFrameDisconnected();
-		   void UpdateHexapodConnected();
 
-		   void OnFocusDisconnected(System::Object^ sender, System::EventArgs^ e);
-		   void OnDataFrameDisconnected(System::Object^ sender, System::EventArgs^ e);
-		   void OnEndpointDetected(System::Object^ sender, SimpleUdp::EndpointMetadata^ e);
-		   void OnDatagramReceived(System::Object^ sender, SimpleUdp::Datagram^ e);
+		   void UpdateFocusConnected();
+		   void UpdateFocusDisconnected();
+
+		   void OnFocusConnected(System::Object^ sender, SuperSimpleTcp::ConnectionEventArgs^ e);
+		   void OnFocusDisconnected(System::Object^ sender, SuperSimpleTcp::ConnectionEventArgs^ e);
+		   void OnFocusDataReceived(System::Object^ sender, SuperSimpleTcp::DataReceivedEventArgs^ e);
+
+		   void UpdateDataFrameConnected();
+		   void UpdateDataFrameDisconnected();
+
+		   void OnDataFrameConnected(System::Object^ sender, SuperSimpleTcp::ConnectionEventArgs^ e);
+		   void OnDataFrameDisconnected(System::Object^ sender, SuperSimpleTcp::ConnectionEventArgs^ e);
+		   void OnDataFrameDataReceived(System::Object^ sender, SuperSimpleTcp::DataReceivedEventArgs^ e);
 
 #pragma endregion
 

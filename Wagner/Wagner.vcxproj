@@ -132,14 +132,11 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <Reference Include="CavemanTcp">
-      <HintPath>libs\CavemanTcp.dll</HintPath>
-    </Reference>
     <Reference Include="LastSummerSmile">
       <HintPath>libs\LastSummerSmile.dll</HintPath>
     </Reference>
-    <Reference Include="SimpleUdp">
-      <HintPath>libs\SimpleUdp.dll</HintPath>
+    <Reference Include="SuperSimpleTcp">
+      <HintPath>libs\SuperSimpleTcp.dll</HintPath>
     </Reference>
     <Reference Include="System" />
     <Reference Include="System.Core" />
@@ -153,6 +150,7 @@
     <ClCompile Include="WagnerForm.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="Hexapod.h" />
     <ClInclude Include="resource.h" />
     <ClInclude Include="WagnerForm.h">
       <FileType>CppForm</FileType>
