@@ -62,10 +62,7 @@ namespace Wagner {
 		bool isPause = false;
 		ReadStatus rxStatus;
 		int StepCount = 1;
-<<<<<<< HEAD
-=======
-		CancellationTokenSource^ CancelReading;
->>>>>>> c2f8491602625a3a270598d99206dc7ce1885627
+
 		AutoResetEvent^ pauseEvent = gcnew AutoResetEvent(false);
 		AutoResetEvent^ waitMessage = gcnew AutoResetEvent(false);
 
