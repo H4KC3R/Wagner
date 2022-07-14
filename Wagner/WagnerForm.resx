@@ -117,10 +117,77 @@
   <resheader name="writer">
     <value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
   </resheader>
+  <assembly alias="System.Drawing" name="System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a" />
+  <data name="PauseButton.Image" type="System.Drawing.Bitmap, System.Drawing" mimetype="application/x-microsoft.net.object.bytearray.base64">
+    <value>
+        iVBORw0KGgoAAAANSUhEUgAAABQAAAAUCAYAAACNiR0NAAAABGdBTUEAALGPC/xhBQAAATJJREFUOE+d
+        1clOQjEUxvG+iuLAUnkNF0Z5FHB4JXHcGpciexLegcSFxiHRjcL/a1pyONQr6Zf8kptOtNweCA3ZwRmu
+        MEz0fIptrJ1d3GL2jxvoQxvTxSdKC5Ro7DGK0WK/KE1s8oMjLKUNv7MP3OPVtL2kNvX5sUvHv4MdoJ3u
+        QdnEN76woQayDzterhGjl+A7n2EzSWw0xs7RJuLbP08N1hQ248RGY/y8E8St+o7aBQcII9OQ1S6oyx+e
+        TENWu+AjwqVpyGoXvECsTd9Ru2AP8UL6Cqm9NluIUaH7Tl1epYV8sXXJlQ7seNFXt4h2WSqnB9jS07Pa
+        fJm+Y7G7HBW4Ct0OXIfmHKKYA7yhNLFEp1j5pfHR8VU9/kVZ6tN3tnLMpmiwalPllP8C9NzHHwuFMAeC
+        NOuKr1sUYAAAAABJRU5ErkJggg==
+</value>
+  </data>
+  <data name="StopButton.Image" type="System.Drawing.Bitmap, System.Drawing" mimetype="application/x-microsoft.net.object.bytearray.base64">
+    <value>
+        iVBORw0KGgoAAAANSUhEUgAAABQAAAAUCAYAAACNiR0NAAAABGdBTUEAALGPC/xhBQAAARhJREFUOE+d
+        1V9OAjEQx/FegRcjwUcU78KDEY4iKKdAr+E/4A6A90F5Vfn+GkqG0u0uneSTbNrO0N3tLC4TN3jCB1Z7
+        un7ENRpHD3P815hBP5qNIbZIFUjR2gGSoWJ/SCXm/OIeR3GLc3YW+8HR7S9gF0xxiVYFzT3D5nzCh16C
+        nZAO6kJrbI4el3/7k/2AdYG60Jo4bwy/1XiitOAb3JcZCEoL6vC7tRkISgsu4d7NQFBa8BW+N+OJ0oIP
+        8Acy7pAmx+YKNkc1uvChRreTOrS5g93GC2yOHt0htEu1j11wjm8cdhdCDa5GTyXkKOcOyehjg1Riiu7q
+        5EsTh25f3ZP7lGlOz+zkNnOhxepNtVP4C9D1CBWFnNsBrA3NMOS4btQAAAAASUVORK5CYII=
+</value>
+  </data>
   <metadata name="DoCyclogrammWorker.TrayLocation" type="System.Drawing.Point, System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a">
     <value>17, 17</value>
   </metadata>
-  <assembly alias="System.Drawing" name="System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a" />
+  <data name="StartFromBtn.Image" type="System.Drawing.Bitmap, System.Drawing" mimetype="application/x-microsoft.net.object.bytearray.base64">
+    <value>
+        iVBORw0KGgoAAAANSUhEUgAAABQAAAAUCAYAAACNiR0NAAAABGdBTUEAALGPC/xhBQAAATdJREFUOE+d
+        1DlOA0EQheERCaEvwXYQMgLEcgMfgTXkApyDHRxwA+zIOWcgZYmQWP7Xclnlck17oKTPGvVS7u7pmqYS
+        azjBLYYTej7GKjrHOh7ws8A99KfV2MMHsgQZjd1FGkr2jWxizRd2MBMb8Ct7gv5g7Npq3jGz/QH8gDMo
+        ltDHC3x/5g4l9BJipyW06OEcn4hjjY6rvP3TSYMXE1powiPieHOEstTY0ZbQYhPPiPOu0Yxcg1mUULGM
+        C/h5uvzlxzdK14SX8PNKwhvXYP675SuU2owdbQl112ov5QBlUKyQmLDrtVlBCRW677SEf7nYOrppaJUq
+        H+vU4e6ja+m9Ybo6CxW4Cj2bUKM520hjC6/IJma0q7kvTQxtX9VT+5SpT2c2t81aaLBqU+WkMxU9H6Il
+        UdP8ArK36BP72ivwAAAAAElFTkSuQmCC
+</value>
+  </data>
+  <data name="LoadScriptBtn.Image" type="System.Drawing.Bitmap, System.Drawing" mimetype="application/x-microsoft.net.object.bytearray.base64">
+    <value>
+        iVBORw0KGgoAAAANSUhEUgAAABQAAAAUCAYAAACNiR0NAAAABGdBTUEAALGPC/xhBQAAAMdJREFUOE+t
+        lTEKwjAYRgNu4lHcPIGHcHMTvIGLswgewVUQXLyJi4uj4Ozk4KzfVxKITcn/JfXBG9KmjzRtqYsYwonh
+        GMrwgo/gGkqowSNcQRM1OIAHaK5UDRIpWhIkZlQNdtn59PsEeW1CHLzBS8Y3LApu4DLjAxYFSzWDcz9u
+        y5XHoSDPJfBg12RFM3iG+4xPGObe4Q4m1ASvcARPcAF/qLnlLSTc8xecNiNP7R4Svpt8nWbNyNM3mPD3
+        oPILaBs+UX6KwLkv7o3hhqwB/ksAAAAASUVORK5CYII=
+</value>
+  </data>
+  <data name="SaveScriptBtn.Image" type="System.Drawing.Bitmap, System.Drawing" mimetype="application/x-microsoft.net.object.bytearray.base64">
+    <value>
+        iVBORw0KGgoAAAANSUhEUgAAABQAAAAUCAYAAACNiR0NAAAABGdBTUEAALGPC/xhBQAAAMZJREFUOE/N
+        lcENgkAQRTnqnUL0amyBowVoPzai2Ib2oEcb8X+zY2Z2R3YAD77khR3CvoAaacADnpTPbM69Js9wAQt4
+        kSafc3bJDezhEhpqwTWUiF6TLbxAc6e1IGeJ6LVQRCNBwQsS8/i/CBLeKb+oInCDsonqmetjWnu8W3mw
+        gxL4Zgs93OAcTFD/JMbKvcQEefQujqgbdphIKDj0EcgjCrODK6gJBQ+Q5zz3UMNzn6MZJhIK/v8djsE0
+        5BVQ++sfMu1t7i9i2moYIdRtxAAAAABJRU5ErkJggg==
+</value>
+  </data>
+  <data name="StartButton.Image" type="System.Drawing.Bitmap, System.Drawing" mimetype="application/x-microsoft.net.object.bytearray.base64">
+    <value>
+        iVBORw0KGgoAAAANSUhEUgAAABQAAAAUCAYAAACNiR0NAAAABGdBTUEAALGPC/xhBQAAATdJREFUOE+d
+        1DlOA0EQheERCaEvwXYQMgLEcgMfgTXkApyDHRxwA+zIOWcgZYmQWP7Xclnlck17oKTPGvVS7u7pmqYS
+        azjBLYYTej7GKjrHOh7ws8A99KfV2MMHsgQZjd1FGkr2jWxizRd2MBMb8Ct7gv5g7Npq3jGz/QH8gDMo
+        ltDHC3x/5g4l9BJipyW06OEcn4hjjY6rvP3TSYMXE1powiPieHOEstTY0ZbQYhPPiPOu0Yxcg1mUULGM
+        C/h5uvzlxzdK14SX8PNKwhvXYP675SuU2owdbQl112ov5QBlUKyQmLDrtVlBCRW677SEf7nYOrppaJUq
+        H+vU4e6ja+m9Ybo6CxW4Cj2bUKM520hjC6/IJma0q7kvTQxtX9VT+5SpT2c2t81aaLBqU+WkMxU9H6Il
+        UdP8ArK36BP72ivwAAAAAElFTkSuQmCC
+</value>
+  </data>
+  <metadata name="saveScriptFile.TrayLocation" type="System.Drawing.Point, System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a">
+    <value>193, 17</value>
+  </metadata>
+  <metadata name="openScriptFile.TrayLocation" type="System.Drawing.Point, System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a">
+    <value>318, 17</value>
+  </metadata>
   <data name="$this.Icon" type="System.Drawing.Icon, System.Drawing" mimetype="application/x-microsoft.net.object.bytearray.base64">
     <value>
         AAABAAEAxv8AAAEACABE5wAAFgAAACgAAADGAAAA/gEAAAEACAAAAAAAOMcAAAAAAAAAAAAAAAEAAAAB

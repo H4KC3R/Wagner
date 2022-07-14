@@ -132,6 +132,9 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <Reference Include="ColorProgressBar">
+      <HintPath>libs\ColorProgressBar.dll</HintPath>
+    </Reference>
     <Reference Include="LastSummerSmile">
       <HintPath>libs\LastSummerSmile.dll</HintPath>
     </Reference>
@@ -144,7 +147,9 @@
     <Reference Include="System" />
     <Reference Include="System.Core" />
     <Reference Include="System.Data" />
+    <Reference Include="System.Design" />
     <Reference Include="System.Drawing" />
+    <Reference Include="System.Messaging" />
     <Reference Include="System.Windows.Forms" />
     <Reference Include="System.Xml" />
   </ItemGroup>

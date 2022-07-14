@@ -4,11 +4,11 @@
 
 System::Void Wagner::WagnerForm::ExpandButton_Click(System::Object^ sender, System::EventArgs^ e) {
 	if (ExpandButton->Text == ">") {
-		this->Width = 720;
+		this->Width = 850;
 		ExpandButton->Text = "<";
 	}
 	else {
-		this->Width = 575;
+		this->Width = 700;
 		ExpandButton->Text = ">";
 	}
 }
@@ -39,15 +39,25 @@ System::Void Wagner::WagnerForm::StartButton_Click(System::Object^ sender, Syste
 
 	CyclogrammTextBox->ReadOnly = true;
 	ClearCyclogrammButton->Enabled = false;
+	
 	StartButton->Enabled = false;
+	StartFromBtn->Enabled = false;
+	stepCountNUD->Enabled = false;
+	LoadScriptBtn->Enabled = false;
+
 	PauseButton->Enabled = true;
 	StopButton->Enabled = true;
 
 	rxStatus = INITIAL_STATUS;
 	auto commands = CyclogrammTextBox->Text->Split(gcnew array<String^>{"\n"}, StringSplitOptions::RemoveEmptyEntries);
+	
 	CyclogrammProgressBar->Maximum = commands->Length;
+	CyclogrammProgressBar->BarColor = System::Drawing::Color::Green;
 	CyclogrammProgressBar->Value = 0;
 
+	progressStatusBox->Text = String::Format(gcnew String("1/{0}\r\n"), 
+		System::Convert::ToString(commands->Length));
+	
 	DoCyclogrammWorker->RunWorkerAsync(commands);
 }
 
@@ -58,6 +68,7 @@ System::Void Wagner::WagnerForm::PauseButton_Click(System::Object^ sender, Syste
 		System::Windows::Forms::DialogResult result = MessageBox::Show("Текущая команда не завершена. Хотите ли Вы дождаться завершения команды?",
 			"Отмена команды", MessageBoxButtons::YesNo, MessageBoxIcon::Question);
 		if (result == System::Windows::Forms::DialogResult::No) {
+			PauseButton->Enabled = false;
 			rxStatus = CANCELED;
 			waitMessage->Set();
 		}
@@ -104,6 +115,7 @@ System::Void Wagner::WagnerForm::WagnerForm_Load(System::Object^ sender, System:
 	FocusFuncs->Add("park");
 	FocusFuncs->Add("getErrors");
 	FocusFuncs->Add("resetErrors");
+	FocusFuncs->Add("getErrors");
 
 	connections->Add("Focus", FocusClient);
 	connections->Add("DataFrame", DataFrameClient);
@@ -171,6 +183,24 @@ void Wagner::WagnerForm::OnDragDrop(System::Object^ sender, System::Windows::For
 
 System::Void Wagner::WagnerForm::ClearCyclogrammButton_Click(System::Object^ sender, System::EventArgs^ e) {
 	CyclogrammTextBox->Clear();
+}
+
+System::Void Wagner::WagnerForm::SaveScriptBtn_Click(System::Object^ sender, System::EventArgs^ e) {
+	if (saveScriptFile->ShowDialog() == System::Windows::Forms::DialogResult::Cancel)
+		return;
+
+	String^ filename = saveScriptFile->FileName;
+	System::IO::File::WriteAllText(filename, CyclogrammTextBox->Text);
+}
+
+System::Void Wagner::WagnerForm::LoadScriptBtn_Click(System::Object^ sender, System::EventArgs^ e) {
+	if (openScriptFile->ShowDialog() == System::Windows::Forms::DialogResult::Cancel)
+		return;
+
+	String^ filename = openScriptFile->FileName;
+	String^ fileText = System::IO::File::ReadAllText(filename);
+	CyclogrammTextBox->Text = fileText;
+	ValidateText();
 }
 
 #pragma endregion
@@ -517,6 +547,8 @@ bool Wagner::WagnerForm::ParsePacket(WagnerPacket^ packet) {
 #pragma region Cyclogramm
 
 void Wagner::WagnerForm::OnPausedHandler() {
+	CyclogrammProgressBar->BarColor = System::Drawing::Color::Yellow;
+
 	StartButton->Enabled = true;
 	PauseButton->Enabled = false;
 	StopButton->Enabled = true;
@@ -565,7 +597,7 @@ System::Void Wagner::WagnerForm::DoCyclogrammWorker_DoWork(System::Object^ sende
 			}
 			else {
 				StepCount++;
-				DoCyclogrammWorker->ReportProgress(1);
+				DoCyclogrammWorker->ReportProgress(1, commands->Length);
 			}
 		}
 		catch (Exception^ ex) {
@@ -578,6 +610,10 @@ System::Void Wagner::WagnerForm::DoCyclogrammWorker_DoWork(System::Object^ sende
 
 System::Void Wagner::WagnerForm::DoCyclogrammWorker_ProgressChanged(System::Object^ sender, System::ComponentModel::ProgressChangedEventArgs^ e) {
 	CyclogrammProgressBar->Increment(1);
+	int TotalStep = (int)e->UserState;
+		progressStatusBox->Text = String::Format(gcnew String("{0}/{1}\r\n"), 
+			System::Convert::ToString(StepCount),
+			System::Convert::ToString(TotalStep));
 }
 
 System::Void Wagner::WagnerForm::DoCyclogrammWorker_RunWorkerCompleted(System::Object^ sender, System::ComponentModel::RunWorkerCompletedEventArgs^ e) {
@@ -587,6 +623,12 @@ System::Void Wagner::WagnerForm::DoCyclogrammWorker_RunWorkerCompleted(System::O
 	StepCount = 1;
 
 	StartButton->Enabled = true;
+	StartFromBtn->Enabled = true;
+	stepCountNUD->Enabled = true;
+	LoadScriptBtn->Enabled = true;
+
+	CyclogrammProgressBar->BarColor = System::Drawing::Color::Red;
+
 	PauseButton->Enabled = false;
 	StopButton->Enabled = false;
 
