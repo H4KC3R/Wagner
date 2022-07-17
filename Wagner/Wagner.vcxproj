@@ -135,8 +135,12 @@
     <Reference Include="ColorProgressBar">
       <HintPath>libs\ColorProgressBar.dll</HintPath>
     </Reference>
-    <Reference Include="LastSummerSmile">
-      <HintPath>libs\LastSummerSmile.dll</HintPath>
+    <Reference Include="FastColoredTextBox">
+      <HintPath>libs\FastColoredTextBox.dll</HintPath>
+    </Reference>
+    <Reference Include="Microsoft.VisualBasic" />
+    <Reference Include="NumericRichTextBox">
+      <HintPath>libs\NumericRichTextBox.dll</HintPath>
     </Reference>
     <Reference Include="SuperSimpleTcp">
       <HintPath>libs\SuperSimpleTcp.dll</HintPath>

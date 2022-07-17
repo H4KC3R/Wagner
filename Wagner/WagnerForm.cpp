@@ -14,11 +14,6 @@ System::Void Wagner::WagnerForm::ExpandButton_Click(System::Object^ sender, Syst
 }
 
 System::Void Wagner::WagnerForm::StartButton_Click(System::Object^ sender, System::EventArgs^ e) {
-	if (CyclogrammTextBox->Text->Length == 0)
-		return;
-	if (!isScriptValid)
-		return;
-
 	if (isPause) {
 		StartButton->Enabled = false;
 		PauseButton->Enabled = true;
@@ -28,6 +23,11 @@ System::Void Wagner::WagnerForm::StartButton_Click(System::Object^ sender, Syste
 		pauseEvent->Set();
 		return;
 	}
+
+	if (CyclogrammTextBox->Text->Length == 0)
+		return;
+	if (!ValidateText())
+		return;
 
 	FocusCommandListBox->Enabled = false;
 	DataFrameCommandListBox->Enabled = false;
@@ -49,7 +49,7 @@ System::Void Wagner::WagnerForm::StartButton_Click(System::Object^ sender, Syste
 	StopButton->Enabled = true;
 
 	rxStatus = INITIAL_STATUS;
-	auto commands = CyclogrammTextBox->Text->Split(gcnew array<String^>{"\n"}, StringSplitOptions::RemoveEmptyEntries);
+	auto commands = CyclogrammTextBox->Text->Split(gcnew array<String^>{"\r\n"}, StringSplitOptions::RemoveEmptyEntries);
 	
 	CyclogrammProgressBar->Maximum = commands->Length;
 	CyclogrammProgressBar->BarColor = System::Drawing::Color::Green;
@@ -95,8 +95,23 @@ System::Void Wagner::WagnerForm::StopButton_Click(System::Object^ sender, System
 
 System::Void Wagner::WagnerForm::WagnerForm_Load(System::Object^ sender, System::EventArgs^ e) {
 	CyclogrammTextBox->AllowDrop = true;
-	CyclogrammTextBox->DragDrop += gcnew System::Windows::Forms::DragEventHandler(this, &Wagner::WagnerForm::OnDragDrop);
 	CyclogrammTextBox->Clear();
+
+	commands->Add("getPosition()");
+	commands->Add("moveTo()");
+	commands->Add("park()");
+	commands->Add("getErrors()");
+	commands->Add("resetErrors()");
+	commands->Add("getErrors()");
+	commands->Add("moveStep()");
+	commands->Add("linearMove()");
+	commands->Add("angularMove()");
+	commands->Add("combinedMove()");
+	commands->Add("moveToZero()");
+
+	popupMenu = gcnew FastColoredTextBoxNS::AutocompleteMenu(CyclogrammTextBox);
+	popupMenu->Items->Width = 200;
+	popupMenu->Items->SetAutocompleteItems(commands);
 
 	FocusClient = gcnew SimpleTcpClient(FocusIpPortTB->Text);
 	FocusClient->Events->Connected += gcnew System::EventHandler<SuperSimpleTcp::ConnectionEventArgs^>(this, &Wagner::WagnerForm::OnFocusConnected);
@@ -110,13 +125,6 @@ System::Void Wagner::WagnerForm::WagnerForm_Load(System::Object^ sender, System:
 
 	HexapodClient = gcnew UdpClient(HexapodIpTB->Text, Convert::ToInt64(HexapodPortTB->Text));
 
-	FocusFuncs->Add("getPosition");
-	FocusFuncs->Add("moveTo");
-	FocusFuncs->Add("park");
-	FocusFuncs->Add("getErrors");
-	FocusFuncs->Add("resetErrors");
-	FocusFuncs->Add("getErrors");
-
 	connections->Add("Focus", FocusClient);
 	connections->Add("DataFrame", DataFrameClient);
 
@@ -129,17 +137,14 @@ System::Void Wagner::WagnerForm::WagnerForm_Load(System::Object^ sender, System:
 
 System::Void Wagner::WagnerForm::FocusCommandListBox_SelectedIndexChanged(System::Object^ sender, System::EventArgs^ e) {
 	CyclogrammTextBox->Text += FocusCommandListBox->SelectedItem->ToString() + "()" + "\r\n";
-	ValidateText();
 }
 
 System::Void Wagner::WagnerForm::DataFrameCommandListBox_SelectedIndexChanged(System::Object^ sender, System::EventArgs^ e) {
 	CyclogrammTextBox->Text += DataFrameCommandListBox->SelectedItem->ToString() + "()" + "\r\n";
-	ValidateText();
 }
 
 System::Void Wagner::WagnerForm::HexapodCommandListBox_SelectedIndexChanged(System::Object^ sender, System::EventArgs^ e) {
 	CyclogrammTextBox->Text += HexapodCommandListBox->SelectedItem->ToString() + "()" + "\r\n";
-	ValidateText();
 }
 
 System::Void Wagner::WagnerForm::cnctToFocus_Click(System::Object^ sender, System::EventArgs^ e) {
@@ -172,15 +177,6 @@ System::Void Wagner::WagnerForm::cnctToHexapod_Click(System::Object^ sender, Sys
 	return;
 }
 
-void Wagner::WagnerForm::OnDragDrop(System::Object^ sender, System::Windows::Forms::DragEventArgs^ e) {
-	array<String^>^ paths = safe_cast<array<String^>^>(e->Data->GetData(DataFormats::FileDrop));
-	for each (String ^ path in paths) {
-		String^ ext = System::IO::Path::GetExtension(path)->ToLower();
-		if (ext == ".txt") CyclogrammTextBox->AppendText(System::IO::File::ReadAllText(path));
-	}
-	ValidateText();
-}
-
 System::Void Wagner::WagnerForm::ClearCyclogrammButton_Click(System::Object^ sender, System::EventArgs^ e) {
 	CyclogrammTextBox->Clear();
 }
@@ -201,6 +197,20 @@ System::Void Wagner::WagnerForm::LoadScriptBtn_Click(System::Object^ sender, Sys
 	String^ fileText = System::IO::File::ReadAllText(filename);
 	CyclogrammTextBox->Text = fileText;
 	ValidateText();
+}
+
+System::Void Wagner::WagnerForm::CyclogrammTextBox_TextChanged(System::Object^ sender, FastColoredTextBoxNS::TextChangedEventArgs^ e) {
+	String^ pattern = "/^park$/|getPosition()|moveTo(.)";
+	e->ChangedRange->ClearStyle(BlueStyle);
+	e->ChangedRange->SetStyle(BlueStyle, pattern, RegexOptions::Multiline);
+}
+
+System::Void Wagner::WagnerForm::ReplaceBtn_Click(System::Object^ sender, System::EventArgs^ e) {
+	CyclogrammTextBox->ShowReplaceDialog();
+}
+
+System::Void Wagner::WagnerForm::FindBtn_Click(System::Object^ sender, System::EventArgs^ e) {
+	CyclogrammTextBox->ShowFindDialog();
 }
 
 #pragma endregion
@@ -307,7 +317,7 @@ Wagner::WagnerForm::WagnerPacket^ Wagner::WagnerForm::fromBytes(array<Byte>^ arr
 
 #pragma region ValidateTextBox
 
-System::String^ Wagner::WagnerForm::getFunctionFromString(String^ s) {
+System::String^ Wagner::WagnerForm::getFunctionNameFromString(String^ s) {
 	int charLocation = s->IndexOf("(", StringComparison::Ordinal);
 	if (charLocation > 0) {
 		return s->Substring(0, charLocation);
@@ -315,7 +325,7 @@ System::String^ Wagner::WagnerForm::getFunctionFromString(String^ s) {
 	return String::Empty;
 }
 
-System::Collections::Generic::List<uint32_t>^ Wagner::WagnerForm::getArgsFromString(String^ s) {
+System::Collections::Generic::List<uint32_t>^ Wagner::WagnerForm::getFunctionArgsFromString(String^ s) {
 	List<uint32_t>^ args = gcnew List<uint32_t>();
 	int Pos1 = s->IndexOf("(") + 1;
 	int Pos2 = s->IndexOf(")");
@@ -339,14 +349,14 @@ bool Wagner::WagnerForm::isFunctionValid(String^ s) {
 	if (s->Length - endOfArgs != 1)
 		return false;
 
-	String^ funcName = getFunctionFromString(s);
+	String^ funcName = getFunctionNameFromString(s);
 	if (String::IsNullOrEmpty(funcName))
 		return false;	
 	
 	if (funcs->ContainsKey(funcName))
 		isCorrectName = true;
 	
-	auto args = getArgsFromString(s);
+	auto args = getFunctionArgsFromString(s);
 	if (funcName == "moveTo" && args->Count == 1)
 		isCorrectArgs = true;
 	else if (isCorrectName && funcName != "moveTo" && (endOfArgs - startOfArgs) == 0)
@@ -354,41 +364,33 @@ bool Wagner::WagnerForm::isFunctionValid(String^ s) {
 	return (isCorrectName && isCorrectArgs);
 }
 
-void Wagner::WagnerForm::ValidateText() {
-	System::Windows::Forms::Cursor::Current = System::Windows::Forms::Cursors::WaitCursor;
+System::String^ Wagner::WagnerForm::getAppByFuncName(String^ funcName) {
+	if (FocusCommandListBox->Items->Contains(funcName))
+		return "Focus";
+	else if (DataFrameCommandListBox->Items->Contains(funcName))
+		return "DataFrame";
+	else if (HexapodCommandListBox->Items->Contains(funcName))
+		return "Hexapod";
+}
 
-	auto textLines = CyclogrammTextBox->Text->Split('\n');
-	isScriptValid = true;
-	for (int i = 0; i < textLines->Length; i++) {
-		if (String::IsNullOrEmpty(textLines[i]))
-			continue;
-		int start = CyclogrammTextBox->GetFirstCharIndexFromLine(i);
-		int length = CyclogrammTextBox->Lines[i]->Length;
-		CyclogrammTextBox->Select(start, length);
-		if (!isFunctionValid(textLines[i])) {
-			CyclogrammTextBox->SelectionFont = gcnew System::Drawing::Font(CyclogrammTextBox->SelectionFont, FontStyle::Underline);
-			CyclogrammTextBox->SelectionColor = Color::DarkBlue;
+bool Wagner::WagnerForm::ValidateText() {
+	System::Windows::Forms::Cursor::Current = System::Windows::Forms::Cursors::WaitCursor;
+	auto commands = CyclogrammTextBox->Text->Split(gcnew array<String^>{"\r\n"}, StringSplitOptions::RemoveEmptyEntries);
+	
+	CyclogrammTextBox->Clear();
+	bool isScriptValid = true;
+
+	for (int i = 0; i < commands->Length; i++) {
+		if (!isFunctionValid(commands[i])) {
+			CyclogrammTextBox->AppendText(commands[i] + "\r\n", RedStyle);
 			isScriptValid = false;
 		}
-		else {
-			CyclogrammTextBox->SelectionFont = gcnew System::Drawing::Font(CyclogrammTextBox->SelectionFont, FontStyle::Regular);
-			CyclogrammTextBox->SelectionColor = Color::Black;
-		}
+		else
+			CyclogrammTextBox->AppendText(commands[i] + "\r\n");
 	}
+
 	System::Windows::Forms::Cursor::Current = System::Windows::Forms::Cursors::Default;
-}
-
-System::Void Wagner::WagnerForm::CyclogrammTextBox_Leave(System::Object^ sender, System::EventArgs^ e) {
-	ValidateText();
-}
-
-System::String^ Wagner::WagnerForm::getAppByFuncName(String^ funcName) {
-	if (FocusFuncs->Contains(funcName))
-		return "Focus";
-	else if(DataFrameFuncs->Contains(funcName))
-		return "DataFrame";
-	else if (HexapodFuncs->Contains(funcName))
-		return "Hexapod";
+	return isScriptValid;
 }
 
 #pragma endregion
@@ -572,8 +574,8 @@ System::Void Wagner::WagnerForm::DoCyclogrammWorker_DoWork(System::Object^ sende
 		}
 
 		try {
-			String^ funcName = getFunctionFromString(commands[StepCount - 1]);
-			auto args = getArgsFromString(commands[StepCount - 1]);
+			String^ funcName = getFunctionNameFromString(commands[StepCount - 1]);
+			auto args = getFunctionArgsFromString(commands[StepCount - 1]);
 			String^ app = getAppByFuncName(funcName);
 
 			bool isConnected = funcs[funcName](args->Count == 0 ? 0 : args[0]);
