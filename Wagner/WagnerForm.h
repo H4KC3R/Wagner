@@ -13,7 +13,8 @@ enum Commands {
 	GET_POSITION = 20,
 	MOVE_TO = 30,
 	GET_ERRORS = 40,
-	RESET_ERRORS = 50
+	RESET_ERRORS = 50,
+	MOVE_STEP = 60
 };
 
 enum ErrorCode {
@@ -83,6 +84,10 @@ namespace Wagner {
 		
 		List<String^>^ commands = gcnew List<String^>();
 		FastColoredTextBoxNS::TextStyle^ BlueStyle = gcnew FastColoredTextBoxNS::TextStyle(Brushes::Blue, nullptr, FontStyle::Regular);
+	private: System::Windows::Forms::Button^ ClearMessageChatBtn;
+	public:
+
+	public:
 		FastColoredTextBoxNS::Style^ RedStyle = gcnew FastColoredTextBoxNS::MarkerStyle(gcnew SolidBrush(
 			Color::FromArgb(50, Color::Red)));
 
@@ -193,6 +198,7 @@ namespace Wagner {
 			this->TgBot = (gcnew System::Windows::Forms::TabPage());
 			this->saveScriptFile = (gcnew System::Windows::Forms::SaveFileDialog());
 			this->openScriptFile = (gcnew System::Windows::Forms::OpenFileDialog());
+			this->ClearMessageChatBtn = (gcnew System::Windows::Forms::Button());
 			this->tabControl1->SuspendLayout();
 			this->ScriptPage->SuspendLayout();
 			(cli::safe_cast<System::ComponentModel::ISupportInitialize^>(this->CyclogrammTextBox))->BeginInit();
@@ -490,6 +496,7 @@ namespace Wagner {
 			this->CyclogrammTextBox->Cursor = System::Windows::Forms::Cursors::IBeam;
 			this->CyclogrammTextBox->DisabledColor = System::Drawing::Color::FromArgb(static_cast<System::Int32>(static_cast<System::Byte>(100)),
 				static_cast<System::Int32>(static_cast<System::Byte>(180)), static_cast<System::Int32>(static_cast<System::Byte>(180)), static_cast<System::Int32>(static_cast<System::Byte>(180)));
+			this->CyclogrammTextBox->Font = (gcnew System::Drawing::Font(L"Courier New", 9.75F));
 			this->CyclogrammTextBox->IsReplaceMode = false;
 			this->CyclogrammTextBox->Location = System::Drawing::Point(8, 124);
 			this->CyclogrammTextBox->Margin = System::Windows::Forms::Padding(2);
@@ -615,7 +622,7 @@ namespace Wagner {
 			this->TgBot->Location = System::Drawing::Point(4, 22);
 			this->TgBot->Name = L"TgBot";
 			this->TgBot->Padding = System::Windows::Forms::Padding(3);
-			this->TgBot->Size = System::Drawing::Size(635, 467);
+			this->TgBot->Size = System::Drawing::Size(635, 470);
 			this->TgBot->TabIndex = 1;
 			this->TgBot->Text = L"TgBot";
 			// 
@@ -631,11 +638,24 @@ namespace Wagner {
 			this->openScriptFile->FileName = L"openFileDialog1";
 			this->openScriptFile->Filter = L"Text files(*.txt)|*.txt";
 			// 
+			// ClearMessageChatBtn
+			// 
+			this->ClearMessageChatBtn->Font = (gcnew System::Drawing::Font(L"Microsoft Sans Serif", 8.25F, System::Drawing::FontStyle::Bold,
+				System::Drawing::GraphicsUnit::Point, static_cast<System::Byte>(204)));
+			this->ClearMessageChatBtn->Location = System::Drawing::Point(651, 510);
+			this->ClearMessageChatBtn->Name = L"ClearMessageChatBtn";
+			this->ClearMessageChatBtn->Size = System::Drawing::Size(29, 24);
+			this->ClearMessageChatBtn->TabIndex = 47;
+			this->ClearMessageChatBtn->Text = L"x";
+			this->ClearMessageChatBtn->UseVisualStyleBackColor = true;
+			this->ClearMessageChatBtn->Click += gcnew System::EventHandler(this, &WagnerForm::ClearMessageChatBtn_Click);
+			// 
 			// WagnerForm
 			// 
 			this->AutoScaleDimensions = System::Drawing::SizeF(6, 13);
 			this->AutoScaleMode = System::Windows::Forms::AutoScaleMode::Font;
 			this->ClientSize = System::Drawing::Size(834, 751);
+			this->Controls->Add(this->ClearMessageChatBtn);
 			this->Controls->Add(this->tabControl1);
 			this->Controls->Add(this->HexapodCommandListBox);
 			this->Controls->Add(this->DataFrameCommandListBox);
@@ -697,6 +717,8 @@ namespace Wagner {
 	private: System::Void ReplaceBtn_Click(System::Object^ sender, System::EventArgs^ e);
 
 	private: System::Void FindBtn_Click(System::Object^ sender, System::EventArgs^ e);
+		   
+	private: System::Void ClearMessageChatBtn_Click(System::Object^ sender, System::EventArgs^ e);
 
 #pragma endregion
 
@@ -753,6 +775,8 @@ namespace Wagner {
 		   bool GetErrors(uint32_t data);
 
 		   bool ResetErrors(uint32_t data);
+
+		   bool moveStep(uint32_t data);
 
 		   bool ParsePacket(WagnerPacket^ packet);
 

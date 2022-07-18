@@ -133,6 +133,7 @@ System::Void Wagner::WagnerForm::WagnerForm_Load(System::Object^ sender, System:
 	funcs->Add("park", gcnew ExecuteCommand(this, &WagnerForm::Park));
 	funcs->Add("getErrors", gcnew ExecuteCommand(this, &WagnerForm::GetErrors));
 	funcs->Add("resetErrors", gcnew ExecuteCommand(this, &WagnerForm::ResetErrors));
+	funcs->Add("moveStep", gcnew ExecuteCommand(this, &WagnerForm::moveStep));
 }
 
 System::Void Wagner::WagnerForm::FocusCommandListBox_SelectedIndexChanged(System::Object^ sender, System::EventArgs^ e) {
@@ -200,7 +201,7 @@ System::Void Wagner::WagnerForm::LoadScriptBtn_Click(System::Object^ sender, Sys
 }
 
 System::Void Wagner::WagnerForm::CyclogrammTextBox_TextChanged(System::Object^ sender, FastColoredTextBoxNS::TextChangedEventArgs^ e) {
-	String^ pattern = "/^park$/|getPosition()|moveTo(.)";
+	String^ pattern = "^getPosition[(][)]|^park[(][)]|^getErrors[(][)]|^resetErrors[(][)]|moveStep[(]?[0-9]+[.]?[0-9]+[)]?|moveTo[(][0-9]+[)]";
 	e->ChangedRange->ClearStyle(BlueStyle);
 	e->ChangedRange->SetStyle(BlueStyle, pattern, RegexOptions::Multiline);
 }
@@ -211,6 +212,10 @@ System::Void Wagner::WagnerForm::ReplaceBtn_Click(System::Object^ sender, System
 
 System::Void Wagner::WagnerForm::FindBtn_Click(System::Object^ sender, System::EventArgs^ e) {
 	CyclogrammTextBox->ShowFindDialog();
+}
+
+System::Void Wagner::WagnerForm::ClearMessageChatBtn_Click(System::Object^ sender, System::EventArgs^ e) {
+	chatTextBox->Clear();
 }
 
 #pragma endregion
@@ -357,7 +362,7 @@ bool Wagner::WagnerForm::isFunctionValid(String^ s) {
 		isCorrectName = true;
 	
 	auto args = getFunctionArgsFromString(s);
-	if (funcName == "moveTo" && args->Count == 1)
+	if ((funcName == "moveTo" || funcName == "moveStep" ) && args->Count == 1)
 		isCorrectArgs = true;
 	else if (isCorrectName && funcName != "moveTo" && (endOfArgs - startOfArgs) == 0)
 		isCorrectArgs = true;
@@ -460,6 +465,21 @@ bool Wagner::WagnerForm::ResetErrors(uint32_t data) {
 	WagnerPacket^ packet = gcnew WagnerPacket();
 
 	packet->command = RESET_ERRORS;
+	packet->data = data;
+
+	auto message = getBytes(packet);
+	if (!FocusClient->IsConnected)
+		return false;
+
+	rxStatus = ON_WAITING_MSG;
+	FocusClient->Send(message);
+	return true;
+}
+
+bool Wagner::WagnerForm::moveStep(uint32_t data) {
+	WagnerPacket^ packet = gcnew WagnerPacket();
+	
+	packet->command = MOVE_STEP;
 	packet->data = data;
 
 	auto message = getBytes(packet);
