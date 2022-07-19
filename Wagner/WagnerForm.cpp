@@ -13,7 +13,7 @@ System::Void Wagner::WagnerForm::ExpandButton_Click(System::Object^ sender, Syst
 	}
 }
 
-System::Void Wagner::WagnerForm::StartButton_Click(System::Object^ sender, System::EventArgs^ e) {
+System::Void Wagner::WagnerForm::StartButton_Click(System::Object^ sender, System::EventArgs^ e)  {
 	if (isPause) {
 		StartButton->Enabled = false;
 		PauseButton->Enabled = true;
@@ -53,7 +53,7 @@ System::Void Wagner::WagnerForm::StartButton_Click(System::Object^ sender, Syste
 	
 	CyclogrammProgressBar->Maximum = commands->Length;
 	CyclogrammProgressBar->BarColor = System::Drawing::Color::Green;
-	CyclogrammProgressBar->Value = 0;
+	CyclogrammProgressBar->Value = 1;
 
 	progressStatusBox->Text = String::Format(gcnew String("1/{0}\r\n"), 
 		System::Convert::ToString(commands->Length));
@@ -124,9 +124,6 @@ System::Void Wagner::WagnerForm::WagnerForm_Load(System::Object^ sender, System:
 	DataFrameClient->Events->DataReceived += gcnew System::EventHandler<SuperSimpleTcp::DataReceivedEventArgs^>(this, &Wagner::WagnerForm::OnDataFrameDataReceived);
 
 	HexapodClient = gcnew UdpClient(HexapodIpTB->Text, Convert::ToInt64(HexapodPortTB->Text));
-
-	connections->Add("Focus", FocusClient);
-	connections->Add("DataFrame", DataFrameClient);
 
 	funcs->Add("getPosition", gcnew ExecuteCommand(this, &WagnerForm::GetPosition));
 	funcs->Add("moveTo", gcnew ExecuteCommand(this, &WagnerForm::MoveTo));
@@ -201,7 +198,7 @@ System::Void Wagner::WagnerForm::LoadScriptBtn_Click(System::Object^ sender, Sys
 }
 
 System::Void Wagner::WagnerForm::CyclogrammTextBox_TextChanged(System::Object^ sender, FastColoredTextBoxNS::TextChangedEventArgs^ e) {
-	String^ pattern = "^getPosition[(][)]|^park[(][)]|^getErrors[(][)]|^resetErrors[(][)]|moveStep[(]?[0-9]+[.]?[0-9]+[)]?|moveTo[(][0-9]+[)]";
+	String^ pattern = "^getPosition[(][)]|^park[(][)]|^getErrors[(][)]|^resetErrors[(][)]|moveStep[(][0-9]+[.]?[0-9]*[)]|moveTo[(][0-9]+[.]?[0-9]*[)]";
 	e->ChangedRange->ClearStyle(BlueStyle);
 	e->ChangedRange->SetStyle(BlueStyle, pattern, RegexOptions::Multiline);
 }
@@ -339,9 +336,19 @@ System::Collections::Generic::List<uint32_t>^ Wagner::WagnerForm::getFunctionArg
 	}
 	auto args_string = (s->Substring(Pos1, Pos2 - Pos1))->Split(',');
 	for each (String ^ temp in args_string) {
-		uint32_t num;
-		if (System::UInt32::TryParse(temp, num))
-			args->Add(num);
+		double numDouble;
+		uint32_t numInt;
+
+		if (temp->Contains(".")) {
+			if (System::Double::TryParse(temp, numDouble)) {
+				numInt = Convert::ToUInt32(numDouble * 1000);
+				args->Add(numInt);
+			}
+		} 
+		else {
+			if (System::UInt32::TryParse(temp, numInt))
+				args->Add(numInt * 1000);
+		}
 	}
 	return args;
 }
@@ -434,8 +441,8 @@ bool Wagner::WagnerForm::MoveTo(uint32_t data) {
 bool Wagner::WagnerForm::Park(uint32_t data) {
 	WagnerPacket^ packet = gcnew WagnerPacket();
 
-	packet->command = MOVE_TO;
-	packet->data = 1000;
+	packet->command = PARK;
+	packet->data = 0;
 
 	auto message = getBytes(packet);
 	if (!FocusClient->IsConnected)
@@ -491,14 +498,14 @@ bool Wagner::WagnerForm::moveStep(uint32_t data) {
 	return true;
 }
 
-bool Wagner::WagnerForm::ParsePacket(WagnerPacket^ packet) {
+bool Wagner::WagnerForm::ParsePacket(WagnerPacket^ packet)	 {
 	if (packet->command == GET_POSITION) {
 		float position = ((float)packet->data) / 1000.0;
 		chatTextBox->Text += String::Format(gcnew String("Текущая позиция {0}\r\n"), System::Convert::ToString(position));
 		waitMessage->Set();
 		return true;
 	}
-	else if (packet->command == MOVE_TO) {
+	else if (packet->command == MOVE_TO || packet->command == MOVE_STEP || packet->command == PARK) {
 		switch (packet->data) {
 		case APP_IS_BUSY:
 			chatTextBox->Text += "Wagner не может получить доступ к FocusAPP, так как это приложение занято. Повторите попытку.\r\n";
@@ -530,6 +537,10 @@ bool Wagner::WagnerForm::ParsePacket(WagnerPacket^ packet) {
 			return false;
 		case UNKNOWN_COMMAND:
 			chatTextBox->Text += "Неизвестная команда.\r\n";
+			waitMessage->Set();
+			return false;
+		case OUT_OF_RANGE:
+			chatTextBox->Text += "Заданное значение за пределами шкалы.\r\n";
 			waitMessage->Set();
 			return false;
 		default:
@@ -581,7 +592,7 @@ System::Void Wagner::WagnerForm::DoCyclogrammWorker_DoWork(System::Object^ sende
 	int size = Marshal::SizeOf(packet);
 	auto commands = (array<System::String^>^)e->Argument;
 
-	while (StepCount <= commands->Length) {
+	while (StepCount < commands->Length) {
 		if (DoCyclogrammWorker->CancellationPending)
 			break;
 	
@@ -594,17 +605,19 @@ System::Void Wagner::WagnerForm::DoCyclogrammWorker_DoWork(System::Object^ sende
 		}
 
 		try {
-			String^ funcName = getFunctionNameFromString(commands[StepCount - 1]);
-			auto args = getFunctionArgsFromString(commands[StepCount - 1]);
+			String^ funcName = getFunctionNameFromString(commands[StepCount]);
+			auto args = getFunctionArgsFromString(commands[StepCount]);
 			String^ app = getAppByFuncName(funcName);
 
 			bool isConnected = funcs[funcName](args->Count == 0 ? 0 : args[0]);
+			
 			if (!isConnected) {
 				MessageBox::Show(String::Format(gcnew String("Нет соединения с {0}\n"), app),
 					Text, MessageBoxButtons::OK, MessageBoxIcon::Information);
 				isPause = true;
 				goto connectionLost;
 			}
+
 			waitMessage->WaitOne(600000);
 
 			if (rxStatus == ON_WAITING_MSG) {
@@ -634,7 +647,7 @@ System::Void Wagner::WagnerForm::DoCyclogrammWorker_ProgressChanged(System::Obje
 	CyclogrammProgressBar->Increment(1);
 	int TotalStep = (int)e->UserState;
 		progressStatusBox->Text = String::Format(gcnew String("{0}/{1}\r\n"), 
-			System::Convert::ToString(StepCount),
+			System::Convert::ToString(StepCount + 1),
 			System::Convert::ToString(TotalStep));
 }
 
@@ -642,7 +655,7 @@ System::Void Wagner::WagnerForm::DoCyclogrammWorker_RunWorkerCompleted(System::O
 	rxStatus = INITIAL_STATUS;
 	isPause = false;
 	
-	StepCount = 1;
+	StepCount = 0;
 
 	StartButton->Enabled = true;
 	StartFromBtn->Enabled = true;
