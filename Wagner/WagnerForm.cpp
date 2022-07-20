@@ -19,6 +19,8 @@ System::Void Wagner::WagnerForm::StartButton_Click(System::Object^ sender, Syste
 		PauseButton->Enabled = true;
 		StopButton->Enabled = true;
 
+		CyclogrammProgressBar->BarColor = System::Drawing::Color::Green;
+
 		isPause = false;
 		pauseEvent->Set();
 		return;
@@ -41,21 +43,25 @@ System::Void Wagner::WagnerForm::StartButton_Click(System::Object^ sender, Syste
 	ClearCyclogrammButton->Enabled = false;
 	
 	StartButton->Enabled = false;
-	StartFromBtn->Enabled = false;
 	stepCountNUD->Enabled = false;
 	LoadScriptBtn->Enabled = false;
 
 	PauseButton->Enabled = true;
 	StopButton->Enabled = true;
 
-	rxStatus = INITIAL_STATUS;
+	StartButton->Text = "Продолжить";
+
+	rxStatus = OK;
 	auto commands = CyclogrammTextBox->Text->Split(gcnew array<String^>{"\r\n"}, StringSplitOptions::RemoveEmptyEntries);
 	
+	StepCount = System::Convert::ToInt32(stepCountNUD->Value) - 1;
+
 	CyclogrammProgressBar->Maximum = commands->Length;
 	CyclogrammProgressBar->BarColor = System::Drawing::Color::Green;
-	CyclogrammProgressBar->Value = 1;
+	CyclogrammProgressBar->Value = StepCount;
 
-	progressStatusBox->Text = String::Format(gcnew String("1/{0}\r\n"), 
+	progressStatusBox->Text = String::Format(gcnew String("{0}/{1}\r\n"),
+		System::Convert::ToString(StepCount),
 		System::Convert::ToString(commands->Length));
 	
 	DoCyclogrammWorker->RunWorkerAsync(commands);
@@ -77,6 +83,7 @@ System::Void Wagner::WagnerForm::PauseButton_Click(System::Object^ sender, Syste
 
 System::Void Wagner::WagnerForm::StopButton_Click(System::Object^ sender, System::EventArgs^ e) {
 	DoCyclogrammWorker->CancelAsync();
+	CyclogrammProgressBar->BarColor = System::Drawing::Color::Red;
 
 	if (isPause) {
 		pauseEvent->Set();
@@ -252,9 +259,11 @@ void Wagner::WagnerForm::OnFocusDisconnected(System::Object^ sender, SuperSimple
 }
 
 void Wagner::WagnerForm::OnFocusDataReceived(System::Object^ sender, SuperSimpleTcp::DataReceivedEventArgs^ e) {
-	auto txMsg = fromBytes(e->Data);
-	if (rxStatus = ON_WAITING_MSG) {
-		rxStatus = READING_PACKET;
+	WagnerPacket^ txMsg = gcnew WagnerPacket();
+	int size = Marshal::SizeOf(txMsg);
+	fromBytes(e->Data, txMsg, size);
+	
+	if (rxStatus == ON_WAITING_MSG) {
 		ParsePackets^ action = gcnew ParsePackets(this, &WagnerForm::ParsePacket);
 		this->BeginInvoke(action, txMsg);
 	}
@@ -286,33 +295,34 @@ void Wagner::WagnerForm::OnDataFrameDataReceived(System::Object^ sender, SuperSi
 	return;
 }
 
+bool Wagner::WagnerForm::SendMessage(WagnerPacket^ %packet, int size) {
+	array<Byte>^ msg = gcnew array<Byte>(size);
+	toBytes(packet, msg, size);
+	
+	if (!FocusClient->IsConnected)
+		return false;
+
+	rxStatus = ON_WAITING_MSG;
+	FocusClient->Send(msg);
+	return true;
+}
+
 #pragma endregion
 
 #pragma region MarshallingPackets
 
-array<System::Byte>^ Wagner::WagnerForm::getBytes(WagnerPacket^ packet) {
-	int size = Marshal::SizeOf(packet);
-	array<Byte>^ arr = gcnew array<Byte>(size);
-
+void Wagner::WagnerForm::toBytes(WagnerPacket^ %packet, array<Byte>^ bytes, int size) {
 	IntPtr ptr = Marshal::AllocHGlobal(size);
 	Marshal::StructureToPtr(packet, ptr, true);
-	Marshal::Copy(ptr, arr, 0, size);
+	Marshal::Copy(ptr, bytes, 0, size);
 	Marshal::FreeHGlobal(ptr);
-	return arr;
 }
 
-Wagner::WagnerForm::WagnerPacket^ Wagner::WagnerForm::fromBytes(array<Byte>^ arr) {
-	WagnerPacket^ packet = gcnew WagnerPacket();
-
-	int size = Marshal::SizeOf(packet);
+void Wagner::WagnerForm::fromBytes(array<Byte>^ bytes, WagnerPacket^ %packet, int size) {
 	IntPtr ptr = Marshal::AllocHGlobal(size);
-
-	Marshal::Copy(arr, 0, ptr, size);
-
+	Marshal::Copy(bytes, 0, ptr, size);
 	packet = (WagnerPacket^)Marshal::PtrToStructure(ptr, packet->GetType());
 	Marshal::FreeHGlobal(ptr);
-
-	return packet;
 }
 
 #pragma endregion
@@ -413,164 +423,158 @@ bool Wagner::WagnerForm::GetPosition(uint32_t data) {
 	WagnerPacket^ packet = gcnew WagnerPacket();
 
 	packet->command = GET_POSITION;
+	packet->data = SUCCESS;
 	packet->data = data;
-
-	auto message = getBytes(packet);
-	if (!FocusClient->IsConnected)
-		return false;
-	rxStatus = ON_WAITING_MSG;
-	FocusClient->Send(message);
-	return true;
+	
+	int size = Marshal::SizeOf(packet);
+	return SendMessage(packet, size);
 }
 
 bool Wagner::WagnerForm::MoveTo(uint32_t data) {
 	WagnerPacket^ packet = gcnew WagnerPacket();
 
 	packet->command = MOVE_TO;
+	packet->status_code = SUCCESS;
 	packet->data = data;
 
-	auto message = getBytes(packet);
-	if (!FocusClient->IsConnected)
-		return false;
-
-	rxStatus = ON_WAITING_MSG;
-	FocusClient->Send(message);
-	return true;
+	int size = Marshal::SizeOf(packet);
+	return SendMessage(packet, size);
 }
 
 bool Wagner::WagnerForm::Park(uint32_t data) {
 	WagnerPacket^ packet = gcnew WagnerPacket();
 
 	packet->command = PARK;
+	packet->status_code = SUCCESS;
 	packet->data = 0;
 
-	auto message = getBytes(packet);
-	if (!FocusClient->IsConnected)
-		return false;
-
-	rxStatus = ON_WAITING_MSG;
-	FocusClient->Send(message);
-	return true;
+	int size = Marshal::SizeOf(packet);
+	return SendMessage(packet, size);
 }
 
 bool Wagner::WagnerForm::GetErrors(uint32_t data) {
 	WagnerPacket^ packet = gcnew WagnerPacket();
 
 	packet->command = GET_ERRORS;
+	packet->status_code = SUCCESS;
 	packet->data = data;
-
-	auto message = getBytes(packet);
-	if (!FocusClient->IsConnected)
-		return false;
-
-	rxStatus = ON_WAITING_MSG;
-	FocusClient->Send(message);
-	return true;
+	
+	int size = Marshal::SizeOf(packet);
+	return SendMessage(packet, size);
 }
 
 bool Wagner::WagnerForm::ResetErrors(uint32_t data) {
 	WagnerPacket^ packet = gcnew WagnerPacket();
 
 	packet->command = RESET_ERRORS;
+	packet->status_code = SUCCESS;
 	packet->data = data;
 
-	auto message = getBytes(packet);
-	if (!FocusClient->IsConnected)
-		return false;
-
-	rxStatus = ON_WAITING_MSG;
-	FocusClient->Send(message);
-	return true;
+	int size = Marshal::SizeOf(packet);
+	return SendMessage(packet, size);
 }
 
 bool Wagner::WagnerForm::moveStep(uint32_t data) {
 	WagnerPacket^ packet = gcnew WagnerPacket();
-	
+
 	packet->command = MOVE_STEP;
+	packet->status_code = SUCCESS;
 	packet->data = data;
 
-	auto message = getBytes(packet);
-	if (!FocusClient->IsConnected)
-		return false;
-
-	rxStatus = ON_WAITING_MSG;
-	FocusClient->Send(message);
-	return true;
+	int size = Marshal::SizeOf(packet);
+	return SendMessage(packet, size);
 }
 
 bool Wagner::WagnerForm::ParsePacket(WagnerPacket^ packet)	 {
-	if (packet->command == GET_POSITION) {
-		float position = ((float)packet->data) / 1000.0;
-		chatTextBox->Text += String::Format(gcnew String("Текущая позиция {0}\r\n"), System::Convert::ToString(position));
-		waitMessage->Set();
+	if (packet->status_code == SUCCESS) {
+		float position = 0;
+		switch(packet->command) {
+		case GET_POSITION:
+			position = ((float)packet->data) / 1000.0;
+			chatTextBox->Text += String::Format(gcnew String("Текущая позиция: {0}\r\n"), System::Convert::ToString(position));
+			waitMessage->Set();
+			break;
+		case MOVE_TO:
+			position = ((float)packet->data) / 1000.0;
+			chatTextBox->Text += String::Format(gcnew String("Команда: \"Движение в точку\" выполнена. Текущая позиция: {0}\r\n"), 
+				System::Convert::ToString(position));
+			waitMessage->Set();
+			break;
+		case MOVE_STEP:
+			position = ((float)packet->data) / 1000.0;
+			chatTextBox->Text += String::Format(gcnew String("Команда: \"Движение с шагом\" выполнена. Текущая позиция: {0}\r\n"), 
+				System::Convert::ToString(position));
+			waitMessage->Set();
+			break;
+		case PARK:
+			position = ((float)packet->data) / 1000.0;
+			chatTextBox->Text += String::Format(gcnew String("Команда: \"Парковка\" выполнена. Текущая позиция: {0}\r\n"), 
+				System::Convert::ToString(position));
+			waitMessage->Set();
+			break;
+		case GET_ERRORS:
+			chatTextBox->Text += String::Format(gcnew String("Ошибка позиционирования: {0}.\r\nОшибка направления: {1}.\r\nНет движения: {2}.\r\n"),
+				System::Convert::ToString(packet->pos_err),
+				System::Convert::ToString(packet->dir_err),
+				System::Convert::ToString(packet->mov_err));
+			waitMessage->Set();
+			break;
+		case RESET_ERRORS:
+			chatTextBox->Text += "Ошибки сброшены.\r\n";
+			waitMessage->Set();
+			break;
+		}
+		rxStatus = OK;
 		return true;
-	}
-	else if (packet->command == MOVE_TO || packet->command == MOVE_STEP || packet->command == PARK) {
-		switch (packet->data) {
+	} 
+	else {
+		isPause = true;
+		switch (packet->status_code) {
 		case APP_IS_BUSY:
 			chatTextBox->Text += "Wagner не может получить доступ к FocusAPP, так как это приложение занято. Повторите попытку.\r\n";
 			waitMessage->Set();
-			return false;
+			break;
 		case REF_POINT_NOT_CAPTURED:
 			chatTextBox->Text += "Референтная метка не захвачена. Захватите реф.метку через FocusAPP и повторите попытку.\r\n";
 			waitMessage->Set();
-			return false;
+			break;
 		case SENSOR_ERROR:
-			chatTextBox->Text += "Ошибка датчика.Проверьте соединение и повторите попытку.\r\n";
+			chatTextBox->Text += "Ошибка датчика. Проверьте соединение и повторите попытку.\r\n";
 			waitMessage->Set();
-			return false;
+			break;
 		case STOPPED_IN_FOCUSAPP:
-			chatTextBox->Text += "Движение в точку остановлено.\r\n";
+			chatTextBox->Text += "Движение в точку остановлено через FocusAPP.\r\n";
 			waitMessage->Set();
-			return false;
+			break;
 		case POSITIONING_ERROR:
-			chatTextBox->Text += "Ошибка позиционирования.\r\n";
+			chatTextBox->Text += String::Format(gcnew String("Ошибка позиционирования. Осталось: {0}\r\n"), 
+				System::Convert::ToString(packet->data));
 			waitMessage->Set();
-			return false;
+			break;
 		case WRONG_DIRECTION:
-			chatTextBox->Text += "Ошибка направления.\r\n";
+			chatTextBox->Text += String::Format(gcnew String("Ошибка направления. Осталось: {0}\r\n"),
+				System::Convert::ToString(packet->data));
 			waitMessage->Set();
-			return false;
+			break;
 		case NOT_MOVING:
-			chatTextBox->Text += "Нет движения.\r\n";
+			chatTextBox->Text += String::Format(gcnew String("Нет движения. Осталось: {0}\r\n"),
+				System::Convert::ToString(packet->data));
 			waitMessage->Set();
-			return false;
+			break;
 		case UNKNOWN_COMMAND:
 			chatTextBox->Text += "Неизвестная команда.\r\n";
 			waitMessage->Set();
-			return false;
+			break;
 		case OUT_OF_RANGE:
 			chatTextBox->Text += "Заданное значение за пределами шкалы.\r\n";
 			waitMessage->Set();
-			return false;
+			break;
 		default:
-			float position = ((float)packet->data) / 1000.0;
-			chatTextBox->Text += String::Format(gcnew String("Текущая позиция {0}\r\n"), System::Convert::ToString(position));
+			chatTextBox->Text += "Неверный формат пакета.\r\n";
 			waitMessage->Set();
-			return true;
+			break;
 		}
-	}
-	else if (packet->command == GET_ERRORS) {
-		uint32_t ammountOfError = packet->data;
-		chatTextBox->Text += String::Format(gcnew String("Количество ошибок {0}.\r\n"), System::Convert::ToString(ammountOfError));
-		waitMessage->Set();
-		return true;
-	}
-	else if (packet->command == RESET_ERRORS) {
-		switch (packet->data) {
-		case APP_IS_BUSY:
-			chatTextBox->Text += "Wagner не может получить доступ к FocusAPP, так как это приложение занято. Повторите попытку.\r\n";
-			waitMessage->Set();
-			return false;
-		default:
-			chatTextBox->Text += "Ошибки сброшены.\r\n";
-			waitMessage->Set();
-			return true;
-		}
-	}
-	else {
-		chatTextBox->Text += "Неверный формат пакета.\r\n";
-		waitMessage->Set();
+		rxStatus = ERROR_STATUS_CODE;
 		return false;
 	}
 }
@@ -594,7 +598,7 @@ System::Void Wagner::WagnerForm::DoCyclogrammWorker_DoWork(System::Object^ sende
 
 	while (StepCount < commands->Length) {
 		if (DoCyclogrammWorker->CancellationPending)
-			break;
+			return;
 	
 	connectionLost:
 		if (isPause) {
@@ -619,50 +623,52 @@ System::Void Wagner::WagnerForm::DoCyclogrammWorker_DoWork(System::Object^ sende
 			}
 
 			waitMessage->WaitOne(600000);
+			Update^ action;
 
-			if (rxStatus == ON_WAITING_MSG) {
-				rxStatus = INITIAL_STATUS;
+			switch (rxStatus) {
+			case ON_WAITING_MSG:
+				rxStatus = OK;
 				isPause = true;
-				Update^ action = gcnew Update(this, &Wagner::WagnerForm::UpdateChatBox);
+				action = gcnew Update(this, &Wagner::WagnerForm::UpdateChatBox);
 				this->Invoke(action, "Таймаут запроса\r\n");
-			}
-			else if (rxStatus == CANCELED) {
-				Update^ action = gcnew Update(this, &Wagner::WagnerForm::UpdateChatBox);
+				break;
+			case CANCELED:
+				action = gcnew Update(this, &Wagner::WagnerForm::UpdateChatBox);
 				this->Invoke(action, "Запрос отменен\r\n");
-			}
-			else {
+			case ERROR_STATUS_CODE:
+				isPause = true;
+				break;
+			case OK:
 				StepCount++;
 				DoCyclogrammWorker->ReportProgress(1, commands->Length);
+				break;
 			}
 		}
 		catch (Exception^ ex) {
 			MessageBox::Show(ex->Message, Text, MessageBoxButtons::OK, MessageBoxIcon::Information);
 			break;
 		}
-
 	}
+	DoCyclogrammWorker->ReportProgress(1, commands->Length);
 }
 
 System::Void Wagner::WagnerForm::DoCyclogrammWorker_ProgressChanged(System::Object^ sender, System::ComponentModel::ProgressChangedEventArgs^ e) {
 	CyclogrammProgressBar->Increment(1);
 	int TotalStep = (int)e->UserState;
 		progressStatusBox->Text = String::Format(gcnew String("{0}/{1}\r\n"), 
-			System::Convert::ToString(StepCount + 1),
+			System::Convert::ToString(StepCount),
 			System::Convert::ToString(TotalStep));
 }
 
 System::Void Wagner::WagnerForm::DoCyclogrammWorker_RunWorkerCompleted(System::Object^ sender, System::ComponentModel::RunWorkerCompletedEventArgs^ e) {
-	rxStatus = INITIAL_STATUS;
+	rxStatus = OK;
 	isPause = false;
 	
-	StepCount = 0;
-
 	StartButton->Enabled = true;
-	StartFromBtn->Enabled = true;
 	stepCountNUD->Enabled = true;
 	LoadScriptBtn->Enabled = true;
 
-	CyclogrammProgressBar->BarColor = System::Drawing::Color::Red;
+	StartButton->Text = "Начать";
 
 	PauseButton->Enabled = false;
 	StopButton->Enabled = false;
@@ -677,6 +683,7 @@ System::Void Wagner::WagnerForm::DoCyclogrammWorker_RunWorkerCompleted(System::O
 
 	CyclogrammTextBox->ReadOnly = false;
 	ClearCyclogrammButton->Enabled = true;
+
 }
 
 #pragma endregion
