@@ -1,5 +1,6 @@
 #pragma once
 #include <iostream>
+#include "Hexapod.h"
 
 enum ReadStatus {
 	OK,

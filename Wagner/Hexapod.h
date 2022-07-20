@@ -1,7 +1,8 @@
 	#pragma once
 
 #define CONTROL_BLOCK	30000
-#define HEXAPOD			30002
+#define TO_HEXAPOD		30002
+#define FROM_HEXAPOD	40003
 
 enum UDP_CONFIG_OP_CODES {
 	ENABLE_REMOTE_POWER_CONTROL = 20,
@@ -19,7 +20,7 @@ typedef struct udp_config {
 #pragma pack(pop)
 
 
-enum UDP_CONFIG_OP_CODES {
+enum UDP_TO_HEXAPOD_OP_CODES{
 	FORCE_SET_SYNC_STAT = 20,
 	RESET_STAT,
 	STOP_MOVING = 30,
@@ -74,4 +75,23 @@ typedef struct hex_pos_config {
 		};
 	} vectors;
 }hex_pos_config_t;
+#pragma pack(pop)
+
+typedef struct alarm_bits {
+
+}alarm_bits_t;
+
+#pragma pack(push, 1)
+typedef struct udp_stat {
+	unsigned char init_done;
+	unsigned char ptg_ready;
+	unsigned char hex_pos_cmd;
+	unsigned char power;
+
+	float cur_XYZ[3];
+	float cur_UVW[3];
+
+	unsigned int cur_heat_percent;
+	float cur_heat_celsius;
+} udp_stat_t;
 #pragma pack(pop)

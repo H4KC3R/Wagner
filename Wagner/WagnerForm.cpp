@@ -84,6 +84,7 @@ System::Void Wagner::WagnerForm::PauseButton_Click(System::Object^ sender, Syste
 System::Void Wagner::WagnerForm::StopButton_Click(System::Object^ sender, System::EventArgs^ e) {
 	DoCyclogrammWorker->CancelAsync();
 	CyclogrammProgressBar->BarColor = System::Drawing::Color::Red;
+	PauseButton->Enabled = false;
 
 	if (isPause) {
 		pauseEvent->Set();
