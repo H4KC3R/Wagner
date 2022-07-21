@@ -163,6 +163,7 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Hexapod.h" />
+    <ClInclude Include="Shell.h" />
     <ClInclude Include="resource.h" />
     <ClInclude Include="WagnerForm.h">
       <FileType>CppForm</FileType>

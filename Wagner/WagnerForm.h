@@ -1,39 +1,12 @@
 #pragma once
-#include <iostream>
 #include "Hexapod.h"
+#include "Shell.h"
 
 enum ReadStatus {
 	OK,
 	ERROR_STATUS_CODE,
 	ON_WAITING_MSG,
 	CANCELED
-};
-
-enum Commands {
-	PARK = 10,
-	GET_POSITION = 20,
-	MOVE_TO = 30,
-	GET_ERRORS = 40,
-	RESET_ERRORS = 50,
-	MOVE_STEP = 60
-};
-
-enum StatusCode {
-	SUCCESS = 99,
-	APP_IS_BUSY,
-	REF_POINT_NOT_CAPTURED,
-	SENSOR_ERROR,
-	STOPPED_IN_FOCUSAPP,
-	POSITIONING_ERROR,
-	WRONG_DIRECTION,
-	NOT_MOVING,
-	UNKNOWN_COMMAND,
-	OUT_OF_RANGE
-};
-
-enum Apps {
-	FOCUS = 0xD0,
-	DATAFRAME = 0xDE,
 };
 
 namespace Wagner {
@@ -71,7 +44,16 @@ namespace Wagner {
 			uint32_t data;
 		};
 
-		delegate bool ExecuteCommand(uint32_t data);
+		[StructLayout(LayoutKind::Sequential)]
+		ref struct  Packet {
+			[MarshalAs(UnmanagedType::U4)] 
+			uint32_t command;
+			[MarshalAs(UnmanagedType::U1)]
+			uint8_t status_code;
+			[MarshalAs(UnmanagedType::U4)]
+			uint32_t data;
+		};
+
 		delegate bool ParsePackets(WagnerPacket^ packet);
 		delegate void Update(String^ msg);
 		delegate void UpdateAction();
@@ -84,15 +66,15 @@ namespace Wagner {
 		AutoResetEvent^ pauseEvent = gcnew AutoResetEvent(false);
 		AutoResetEvent^ waitMessage = gcnew AutoResetEvent(false);
 
-	public:
 		SimpleTcpClient^ FocusClient;
-		SimpleTcpClient^ DataFrameClient;
+		SimpleTcpClient^ MegaFrameClient;
+
 	public:
 		UdpClient^ HexapodClient;
 
-		Dictionary<String^, ExecuteCommand^>^ funcs = gcnew Dictionary<String^, ExecuteCommand^>();
-
+		Dictionary<String^, uint32_t>^ commandNames = gcnew Dictionary<String^, uint32_t>();
 		List<String^>^ commands = gcnew List<String^>();
+
 		FastColoredTextBoxNS::TextStyle^ BlueStyle = gcnew FastColoredTextBoxNS::TextStyle(Brushes::Blue, nullptr, FontStyle::Regular);
 		FastColoredTextBoxNS::Style^ RedStyle = gcnew FastColoredTextBoxNS::MarkerStyle(gcnew SolidBrush(
 			Color::FromArgb(50, Color::Red)));
@@ -124,7 +106,7 @@ namespace Wagner {
 	private: FastColoredTextBoxNS::FastColoredTextBox^ CurrentTB;
 	private: FastColoredTextBoxNS::AutocompleteMenu^ popupMenu;
 	private: FastColoredTextBoxNS::FastColoredTextBox^ CyclogrammTextBox;
-	private: System::Windows::Forms::ListBox^ DataFrameCommandListBox;
+	private: System::Windows::Forms::ListBox^ MegaFrameCommandListBox;
 	private: System::Windows::Forms::Button^ PauseButton;
 	private: System::Windows::Forms::Button^ StopButton;
 	private: System::Windows::Forms::TabControl^ tabControl1;
@@ -140,12 +122,12 @@ namespace Wagner {
 	private: ::ColorProgressBar::ColorProgressBar^ CyclogrammProgressBar;
 	private: System::Windows::Forms::Button^ ExpandButton;
 	private: System::Windows::Forms::ListBox^ FocusCommandListBox;
-	private: System::Windows::Forms::Button^ cnctToDataFrame;
+	private: System::Windows::Forms::Button^ cnctToMegaFrame;
 	private: System::Windows::Forms::Button^ cnctToFocus;
 	private: System::Windows::Forms::Button^ cnctToHexapod;
 	private: System::Windows::Forms::ListBox^ HexapodCommandListBox;
 	private: System::Windows::Forms::TextBox^ FocusIpPortTB;
-	private: System::Windows::Forms::TextBox^ DataFrameIpPortTB;
+	private: System::Windows::Forms::TextBox^ MegaFrameIpPortTB;
 	private: System::Windows::Forms::TextBox^ HexapodIpTB;
 	private: System::Windows::Forms::TextBox^ HexapodPortTB;
 	private: System::Windows::Forms::TextBox^ CommandTB;
@@ -179,13 +161,13 @@ namespace Wagner {
 			this->chatTextBox = (gcnew System::Windows::Forms::TextBox());
 			this->ClearCyclogrammButton = (gcnew System::Windows::Forms::Button());
 			this->DoCyclogrammWorker = (gcnew System::ComponentModel::BackgroundWorker());
-			this->cnctToDataFrame = (gcnew System::Windows::Forms::Button());
+			this->cnctToMegaFrame = (gcnew System::Windows::Forms::Button());
 			this->cnctToFocus = (gcnew System::Windows::Forms::Button());
 			this->cnctToHexapod = (gcnew System::Windows::Forms::Button());
-			this->DataFrameCommandListBox = (gcnew System::Windows::Forms::ListBox());
+			this->MegaFrameCommandListBox = (gcnew System::Windows::Forms::ListBox());
 			this->HexapodCommandListBox = (gcnew System::Windows::Forms::ListBox());
 			this->FocusIpPortTB = (gcnew System::Windows::Forms::TextBox());
-			this->DataFrameIpPortTB = (gcnew System::Windows::Forms::TextBox());
+			this->MegaFrameIpPortTB = (gcnew System::Windows::Forms::TextBox());
 			this->HexapodIpTB = (gcnew System::Windows::Forms::TextBox());
 			this->HexapodPortTB = (gcnew System::Windows::Forms::TextBox());
 			this->tabControl1 = (gcnew System::Windows::Forms::TabControl());
@@ -264,7 +246,7 @@ namespace Wagner {
 			});
 			this->FocusCommandListBox->Location = System::Drawing::Point(687, 43);
 			this->FocusCommandListBox->Name = L"FocusCommandListBox";
-			this->FocusCommandListBox->Size = System::Drawing::Size(132, 100);
+			this->FocusCommandListBox->Size = System::Drawing::Size(132, 132);
 			this->FocusCommandListBox->TabIndex = 10;
 			this->FocusCommandListBox->SelectedIndexChanged += gcnew System::EventHandler(this, &WagnerForm::FocusCommandListBox_SelectedIndexChanged);
 			// 
@@ -315,17 +297,17 @@ namespace Wagner {
 			this->DoCyclogrammWorker->ProgressChanged += gcnew System::ComponentModel::ProgressChangedEventHandler(this, &WagnerForm::DoCyclogrammWorker_ProgressChanged);
 			this->DoCyclogrammWorker->RunWorkerCompleted += gcnew System::ComponentModel::RunWorkerCompletedEventHandler(this, &WagnerForm::DoCyclogrammWorker_RunWorkerCompleted);
 			// 
-			// cnctToDataFrame
+			// cnctToMegaFrame
 			// 
-			this->cnctToDataFrame->ForeColor = System::Drawing::Color::DarkGreen;
-			this->cnctToDataFrame->ImageAlign = System::Drawing::ContentAlignment::MiddleLeft;
-			this->cnctToDataFrame->Location = System::Drawing::Point(168, 33);
-			this->cnctToDataFrame->Name = L"cnctToDataFrame";
-			this->cnctToDataFrame->Size = System::Drawing::Size(156, 23);
-			this->cnctToDataFrame->TabIndex = 17;
-			this->cnctToDataFrame->Text = L"Подключить DataFrame";
-			this->cnctToDataFrame->UseVisualStyleBackColor = true;
-			this->cnctToDataFrame->Click += gcnew System::EventHandler(this, &WagnerForm::cnctToDataFrame_Click);
+			this->cnctToMegaFrame->ForeColor = System::Drawing::Color::DarkGreen;
+			this->cnctToMegaFrame->ImageAlign = System::Drawing::ContentAlignment::MiddleLeft;
+			this->cnctToMegaFrame->Location = System::Drawing::Point(168, 33);
+			this->cnctToMegaFrame->Name = L"cnctToMegaFrame";
+			this->cnctToMegaFrame->Size = System::Drawing::Size(156, 23);
+			this->cnctToMegaFrame->TabIndex = 17;
+			this->cnctToMegaFrame->Text = L"Подключить MegaFrame";
+			this->cnctToMegaFrame->UseVisualStyleBackColor = true;
+			this->cnctToMegaFrame->Click += gcnew System::EventHandler(this, &WagnerForm::cnctToMegaFrame_Click);
 			// 
 			// cnctToFocus
 			// 
@@ -351,17 +333,21 @@ namespace Wagner {
 			this->cnctToHexapod->UseVisualStyleBackColor = true;
 			this->cnctToHexapod->Click += gcnew System::EventHandler(this, &WagnerForm::cnctToHexapod_Click);
 			// 
-			// DataFrameCommandListBox
+			// MegaFrameCommandListBox
 			// 
-			this->DataFrameCommandListBox->Font = (gcnew System::Drawing::Font(L"Microsoft Sans Serif", 9.75F, System::Drawing::FontStyle::Regular,
+			this->MegaFrameCommandListBox->Font = (gcnew System::Drawing::Font(L"Microsoft Sans Serif", 9.75F, System::Drawing::FontStyle::Regular,
 				System::Drawing::GraphicsUnit::Point, static_cast<System::Byte>(204)));
-			this->DataFrameCommandListBox->FormattingEnabled = true;
-			this->DataFrameCommandListBox->ItemHeight = 16;
-			this->DataFrameCommandListBox->Location = System::Drawing::Point(687, 217);
-			this->DataFrameCommandListBox->Name = L"DataFrameCommandListBox";
-			this->DataFrameCommandListBox->Size = System::Drawing::Size(132, 100);
-			this->DataFrameCommandListBox->TabIndex = 20;
-			this->DataFrameCommandListBox->SelectedIndexChanged += gcnew System::EventHandler(this, &WagnerForm::DataFrameCommandListBox_SelectedIndexChanged);
+			this->MegaFrameCommandListBox->FormattingEnabled = true;
+			this->MegaFrameCommandListBox->ItemHeight = 16;
+			this->MegaFrameCommandListBox->Items->AddRange(gcnew cli::array< System::Object^  >(8) {
+				L"setExposureTime", L"saveFrame",
+					L"takeFrame", L"givePosition", L"pickUpExposure", L"getExposureTime", L"filterFrame", L"localizeFrame"
+			});
+			this->MegaFrameCommandListBox->Location = System::Drawing::Point(687, 185);
+			this->MegaFrameCommandListBox->Name = L"MegaFrameCommandListBox";
+			this->MegaFrameCommandListBox->Size = System::Drawing::Size(132, 180);
+			this->MegaFrameCommandListBox->TabIndex = 20;
+			this->MegaFrameCommandListBox->SelectedIndexChanged += gcnew System::EventHandler(this, &WagnerForm::MegaFrameCommandListBox_SelectedIndexChanged);
 			// 
 			// HexapodCommandListBox
 			// 
@@ -373,9 +359,9 @@ namespace Wagner {
 				L"linearMove", L"angularMove", L"combinedMove",
 					L"moveToZero"
 			});
-			this->HexapodCommandListBox->Location = System::Drawing::Point(686, 392);
+			this->HexapodCommandListBox->Location = System::Drawing::Point(686, 376);
 			this->HexapodCommandListBox->Name = L"HexapodCommandListBox";
-			this->HexapodCommandListBox->Size = System::Drawing::Size(132, 100);
+			this->HexapodCommandListBox->Size = System::Drawing::Size(132, 116);
 			this->HexapodCommandListBox->TabIndex = 21;
 			this->HexapodCommandListBox->SelectedIndexChanged += gcnew System::EventHandler(this, &WagnerForm::HexapodCommandListBox_SelectedIndexChanged);
 			// 
@@ -388,14 +374,14 @@ namespace Wagner {
 			this->FocusIpPortTB->TabIndex = 22;
 			this->FocusIpPortTB->Text = L"127.0.0.1:9000";
 			// 
-			// DataFrameIpPortTB
+			// MegaFrameIpPortTB
 			// 
-			this->DataFrameIpPortTB->Location = System::Drawing::Point(168, 7);
-			this->DataFrameIpPortTB->Name = L"DataFrameIpPortTB";
-			this->DataFrameIpPortTB->ReadOnly = true;
-			this->DataFrameIpPortTB->Size = System::Drawing::Size(156, 20);
-			this->DataFrameIpPortTB->TabIndex = 23;
-			this->DataFrameIpPortTB->Text = L"127.0.0.1:6000";
+			this->MegaFrameIpPortTB->Location = System::Drawing::Point(168, 7);
+			this->MegaFrameIpPortTB->Name = L"MegaFrameIpPortTB";
+			this->MegaFrameIpPortTB->ReadOnly = true;
+			this->MegaFrameIpPortTB->Size = System::Drawing::Size(156, 20);
+			this->MegaFrameIpPortTB->TabIndex = 23;
+			this->MegaFrameIpPortTB->Text = L"127.0.0.1:6000";
 			// 
 			// HexapodIpTB
 			// 
@@ -442,12 +428,12 @@ namespace Wagner {
 			this->ScriptPage->Controls->Add(this->HexapodPortTB);
 			this->ScriptPage->Controls->Add(this->cnctToFocus);
 			this->ScriptPage->Controls->Add(this->HexapodIpTB);
-			this->ScriptPage->Controls->Add(this->DataFrameIpPortTB);
+			this->ScriptPage->Controls->Add(this->MegaFrameIpPortTB);
 			this->ScriptPage->Controls->Add(this->cnctToHexapod);
 			this->ScriptPage->Controls->Add(this->PauseButton);
 			this->ScriptPage->Controls->Add(this->StartButton);
 			this->ScriptPage->Controls->Add(this->StopButton);
-			this->ScriptPage->Controls->Add(this->cnctToDataFrame);
+			this->ScriptPage->Controls->Add(this->cnctToMegaFrame);
 			this->ScriptPage->Location = System::Drawing::Point(4, 22);
 			this->ScriptPage->Name = L"ScriptPage";
 			this->ScriptPage->Padding = System::Windows::Forms::Padding(3);
@@ -500,6 +486,7 @@ namespace Wagner {
 			this->CyclogrammTextBox->Cursor = System::Windows::Forms::Cursors::IBeam;
 			this->CyclogrammTextBox->DisabledColor = System::Drawing::Color::FromArgb(static_cast<System::Int32>(static_cast<System::Byte>(100)),
 				static_cast<System::Int32>(static_cast<System::Byte>(180)), static_cast<System::Int32>(static_cast<System::Byte>(180)), static_cast<System::Int32>(static_cast<System::Byte>(180)));
+			this->CyclogrammTextBox->Font = (gcnew System::Drawing::Font(L"Courier New", 9.75F));
 			this->CyclogrammTextBox->IsReplaceMode = false;
 			this->CyclogrammTextBox->Location = System::Drawing::Point(8, 124);
 			this->CyclogrammTextBox->Margin = System::Windows::Forms::Padding(2);
@@ -650,7 +637,7 @@ namespace Wagner {
 			this->Controls->Add(this->ClearMessageChatBtn);
 			this->Controls->Add(this->tabControl1);
 			this->Controls->Add(this->HexapodCommandListBox);
-			this->Controls->Add(this->DataFrameCommandListBox);
+			this->Controls->Add(this->MegaFrameCommandListBox);
 			this->Controls->Add(this->chatTextBox);
 			this->Controls->Add(this->CommandTB);
 			this->Controls->Add(this->FocusCommandListBox);
@@ -690,13 +677,13 @@ namespace Wagner {
 
 	private: System::Void FocusCommandListBox_SelectedIndexChanged(System::Object^ sender, System::EventArgs^ e);
 
-	private: System::Void DataFrameCommandListBox_SelectedIndexChanged(System::Object^ sender, System::EventArgs^ e);
+	private: System::Void MegaFrameCommandListBox_SelectedIndexChanged(System::Object^ sender, System::EventArgs^ e);
 
 	private: System::Void HexapodCommandListBox_SelectedIndexChanged(System::Object^ sender, System::EventArgs^ e);
 
 	private: System::Void cnctToFocus_Click(System::Object^ sender, System::EventArgs^ e);
 
-	private: System::Void cnctToDataFrame_Click(System::Object^ sender, System::EventArgs^ e);
+	private: System::Void cnctToMegaFrame_Click(System::Object^ sender, System::EventArgs^ e);
 
 	private: System::Void cnctToHexapod_Click(System::Object^ sender, System::EventArgs^ e);
 
@@ -714,7 +701,7 @@ namespace Wagner {
 
 #pragma endregion
 
-#pragma region Server
+#pragma region Messaging
 
 		   void UpdateChatBox(String^ text);
 
@@ -725,34 +712,30 @@ namespace Wagner {
 		   void OnFocusDisconnected(System::Object^ sender, SuperSimpleTcp::ConnectionEventArgs^ e);
 		   void OnFocusDataReceived(System::Object^ sender, SuperSimpleTcp::DataReceivedEventArgs^ e);
 
-		   void UpdateDataFrameConnected();
-		   void UpdateDataFrameDisconnected();
+		   void UpdateMegaFrameConnected();
+		   void UpdateMegaFrameDisconnected();
 
-		   void OnDataFrameConnected(System::Object^ sender, SuperSimpleTcp::ConnectionEventArgs^ e);
-		   void OnDataFrameDisconnected(System::Object^ sender, SuperSimpleTcp::ConnectionEventArgs^ e);
-		   void OnDataFrameDataReceived(System::Object^ sender, SuperSimpleTcp::DataReceivedEventArgs^ e);
-
-		   bool SendMessage(WagnerPacket^ %packet, int size);
+		   void OnMegaFrameConnected(System::Object^ sender, SuperSimpleTcp::ConnectionEventArgs^ e);
+		   void OnMegaFrameDisconnected(System::Object^ sender, SuperSimpleTcp::ConnectionEventArgs^ e);
+		   void OnMegaFrameDataReceived(System::Object^ sender, SuperSimpleTcp::DataReceivedEventArgs^ e);
 
 #pragma endregion
 
-#pragma region MarshallingPackets
+#pragma region Bytes_Array Conversion
 
-		   void toBytes(WagnerPacket^ %packet, array<Byte>^ bytes, int size);
+		   void toBytes(WagnerPacket^% packet, array<Byte>^ bytes, int size);
 
-		   void fromBytes(array<Byte>^ bytes, WagnerPacket^ %packet, int size);
+		   void fromBytes(array<Byte>^ bytes, WagnerPacket^% packet, int size);
 
 #pragma endregion
 
 #pragma region ValidateTextBox
 
-		   String^ getFunctionNameFromString(String^ s);
+		   void ParseStringName(String^ s, uint32_t* commandParsed, String^ %appName);
 
 		   List<uint32_t>^ getFunctionArgsFromString(String^ s);
 
 		   bool isFunctionValid(String^ s);
-
-		   String^ getAppByFuncName(String^ funcName);
 
 		   bool ValidateText();
 
@@ -760,19 +743,13 @@ namespace Wagner {
 
 #pragma region Funcs
 
-		   bool GetPosition(uint32_t data);
+		   bool SendWagnerPacket(uint32_t cmd, uint8_t status_code, uint32_t data);
 
-		   bool MoveTo(uint32_t data);
+		   bool ParseWagnerPacket(WagnerPacket^ packet);
 
-		   bool Park(uint32_t data);
+		   bool SendPacket(uint32_t cmd, uint8_t status_code, uint32_t data);
 
-		   bool GetErrors(uint32_t data);
-
-		   bool ResetErrors(uint32_t data);
-
-		   bool moveStep(uint32_t data);
-
-		   bool ParsePacket(WagnerPacket^ packet);
+		   bool ParsePacket(Packet^ packet);
 
 #pragma endregion
 

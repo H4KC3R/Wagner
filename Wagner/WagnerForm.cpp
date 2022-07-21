@@ -32,11 +32,11 @@ System::Void Wagner::WagnerForm::StartButton_Click(System::Object^ sender, Syste
 		return;
 
 	FocusCommandListBox->Enabled = false;
-	DataFrameCommandListBox->Enabled = false;
+	MegaFrameCommandListBox->Enabled = false;
 	HexapodCommandListBox->Enabled = false;
 
 	cnctToFocus->Enabled = false;
-	cnctToDataFrame->Enabled = false;
+	cnctToMegaFrame->Enabled = false;
 	cnctToHexapod->Enabled = false;
 
 	CyclogrammTextBox->ReadOnly = true;
@@ -105,17 +105,12 @@ System::Void Wagner::WagnerForm::WagnerForm_Load(System::Object^ sender, System:
 	CyclogrammTextBox->AllowDrop = true;
 	CyclogrammTextBox->Clear();
 
-	commands->Add("getPosition()");
-	commands->Add("moveTo()");
-	commands->Add("park()");
-	commands->Add("getErrors()");
-	commands->Add("resetErrors()");
-	commands->Add("getErrors()");
-	commands->Add("moveStep()");
-	commands->Add("linearMove()");
-	commands->Add("angularMove()");
-	commands->Add("combinedMove()");
-	commands->Add("moveToZero()");
+	for each (String ^ elem in FocusCommandListBox->Items)
+		commands->Add(elem + "()");
+	for each (String ^ elem in MegaFrameCommandListBox->Items)
+		commands->Add(elem + "()");
+	for each (String ^ elem in HexapodCommandListBox->Items)
+		commands->Add(elem + "()");
 
 	popupMenu = gcnew FastColoredTextBoxNS::AutocompleteMenu(CyclogrammTextBox);
 	popupMenu->Items->Width = 200;
@@ -126,27 +121,36 @@ System::Void Wagner::WagnerForm::WagnerForm_Load(System::Object^ sender, System:
 	FocusClient->Events->Disconnected += gcnew System::EventHandler<SuperSimpleTcp::ConnectionEventArgs^>(this, &Wagner::WagnerForm::OnFocusDisconnected);
 	FocusClient->Events->DataReceived += gcnew System::EventHandler<SuperSimpleTcp::DataReceivedEventArgs^>(this, &Wagner::WagnerForm::OnFocusDataReceived);
 
-	DataFrameClient = gcnew SimpleTcpClient(DataFrameIpPortTB->Text);
-	DataFrameClient->Events->Connected += gcnew System::EventHandler<SuperSimpleTcp::ConnectionEventArgs^>(this, &Wagner::WagnerForm::OnDataFrameConnected);
-	DataFrameClient->Events->Disconnected += gcnew System::EventHandler<SuperSimpleTcp::ConnectionEventArgs^>(this, &Wagner::WagnerForm::OnDataFrameDisconnected);
-	DataFrameClient->Events->DataReceived += gcnew System::EventHandler<SuperSimpleTcp::DataReceivedEventArgs^>(this, &Wagner::WagnerForm::OnDataFrameDataReceived);
+	MegaFrameClient = gcnew SimpleTcpClient(MegaFrameIpPortTB->Text);
+	MegaFrameClient->Events->Connected += gcnew System::EventHandler<SuperSimpleTcp::ConnectionEventArgs^>(this, &Wagner::WagnerForm::OnMegaFrameConnected);
+	MegaFrameClient->Events->Disconnected += gcnew System::EventHandler<SuperSimpleTcp::ConnectionEventArgs^>(this, &Wagner::WagnerForm::OnMegaFrameDisconnected);
+	MegaFrameClient->Events->DataReceived += gcnew System::EventHandler<SuperSimpleTcp::DataReceivedEventArgs^>(this, &Wagner::WagnerForm::OnMegaFrameDataReceived);
 
 	HexapodClient = gcnew UdpClient(HexapodIpTB->Text, Convert::ToInt64(HexapodPortTB->Text));
 
-	funcs->Add("getPosition", gcnew ExecuteCommand(this, &WagnerForm::GetPosition));
-	funcs->Add("moveTo", gcnew ExecuteCommand(this, &WagnerForm::MoveTo));
-	funcs->Add("park", gcnew ExecuteCommand(this, &WagnerForm::Park));
-	funcs->Add("getErrors", gcnew ExecuteCommand(this, &WagnerForm::GetErrors));
-	funcs->Add("resetErrors", gcnew ExecuteCommand(this, &WagnerForm::ResetErrors));
-	funcs->Add("moveStep", gcnew ExecuteCommand(this, &WagnerForm::moveStep));
+	commandNames->Add("park", PARK);
+	commandNames->Add("getPosition", GET_POSITION);
+	commandNames->Add("moveTo", MOVE_TO);
+	commandNames->Add("getErrors", GET_ERRORS);
+	commandNames->Add("resetErrors", RESET_ERRORS);
+	commandNames->Add("moveStep", MOVE_STEP);
+
+	commandNames->Add("setExposureTime", SET_EXPOSURE_TIME);
+	commandNames->Add("saveFrame", SAVE_FRAME);
+	commandNames->Add("takeFrame", TAKE_FRAME);
+	commandNames->Add("givePosition", GIVE_POSITION);
+	commandNames->Add("pickUpExposure", PICK_UP_EXPOSURE);
+	commandNames->Add("getExposureTime", GET_EXPOSURE_TIME);
+	commandNames->Add("filterFrame", FILTER_FRAME);
+	commandNames->Add("localizeFrame", LOCALIZE_FRAME);
 }
 
 System::Void Wagner::WagnerForm::FocusCommandListBox_SelectedIndexChanged(System::Object^ sender, System::EventArgs^ e) {
 	CyclogrammTextBox->Text += FocusCommandListBox->SelectedItem->ToString() + "()" + "\r\n";
 }
 
-System::Void Wagner::WagnerForm::DataFrameCommandListBox_SelectedIndexChanged(System::Object^ sender, System::EventArgs^ e) {
-	CyclogrammTextBox->Text += DataFrameCommandListBox->SelectedItem->ToString() + "()" + "\r\n";
+System::Void Wagner::WagnerForm::MegaFrameCommandListBox_SelectedIndexChanged(System::Object^ sender, System::EventArgs^ e) {
+	CyclogrammTextBox->Text += MegaFrameCommandListBox->SelectedItem->ToString() + "()" + "\r\n";
 }
 
 System::Void Wagner::WagnerForm::HexapodCommandListBox_SelectedIndexChanged(System::Object^ sender, System::EventArgs^ e) {
@@ -166,12 +170,12 @@ System::Void Wagner::WagnerForm::cnctToFocus_Click(System::Object^ sender, Syste
 	}
 }
 
-System::Void Wagner::WagnerForm::cnctToDataFrame_Click(System::Object^ sender, System::EventArgs^ e) {
-	if (DataFrameClient->IsConnected)
-		DataFrameClient->Disconnect();
+System::Void Wagner::WagnerForm::cnctToMegaFrame_Click(System::Object^ sender, System::EventArgs^ e) {
+	if (MegaFrameClient->IsConnected)
+		MegaFrameClient->Disconnect();
 	else {
 		try {
-			DataFrameClient->Connect();
+			MegaFrameClient->Connect();
 		}
 		catch (Exception^ ex) {
 			MessageBox::Show(ex->Message, Text, MessageBoxButtons::OK, MessageBoxIcon::Information);
@@ -206,7 +210,9 @@ System::Void Wagner::WagnerForm::LoadScriptBtn_Click(System::Object^ sender, Sys
 }
 
 System::Void Wagner::WagnerForm::CyclogrammTextBox_TextChanged(System::Object^ sender, FastColoredTextBoxNS::TextChangedEventArgs^ e) {
-	String^ pattern = "^getPosition[(][)]|^park[(][)]|^getErrors[(][)]|^resetErrors[(][)]|moveStep[(][0-9]+[.]?[0-9]*[)]|moveTo[(][0-9]+[.]?[0-9]*[)]";
+	String^ FocusFuncs = "^getPosition[(][)]|^park[(][)]|^getErrors[(][)]|^resetErrors[(][)]|moveStep[(][0-9]+[.]?[0-9]*[)]|moveTo[(][0-9]+[.]?[0-9]*[)]";
+	String^ MegaFrameFuncs = "|^setExposureTime[(][0-9]+[)]|^saveFrame[(][)]|^takeFrame[(][)]|^givePosition[(][)]|^pickUpExposure[(][)]|^getExposureTime[(][)]|^filterFrame[(][)]|^localizeFrame[(][)]";
+	String^ pattern = FocusFuncs + MegaFrameFuncs;
 	e->ChangedRange->ClearStyle(BlueStyle);
 	e->ChangedRange->SetStyle(BlueStyle, pattern, RegexOptions::Multiline);
 }
@@ -270,47 +276,35 @@ void Wagner::WagnerForm::OnFocusDataReceived(System::Object^ sender, SuperSimple
 	}
 }
 
-void Wagner::WagnerForm::UpdateDataFrameConnected() {
-	chatTextBox->Text += "DataFrame подключен\r\n";
-	cnctToDataFrame->ForeColor = System::Drawing::Color::Red;
-	cnctToDataFrame->Text = "Отключить DataFrame";
+void Wagner::WagnerForm::UpdateMegaFrameConnected() {
+	chatTextBox->Text += "MegaFrame подключен\r\n";
+	cnctToMegaFrame->ForeColor = System::Drawing::Color::Red;
+	cnctToMegaFrame->Text = "Отключить MegaFrame";
 }
 
-void Wagner::WagnerForm::UpdateDataFrameDisconnected() {
-	chatTextBox->Text += "DataFrame Отключен\r\n";
-	cnctToDataFrame->ForeColor = System::Drawing::Color::DarkGreen;
-	cnctToDataFrame->Text = "Подключить DataFrame";
+void Wagner::WagnerForm::UpdateMegaFrameDisconnected() {
+	chatTextBox->Text += "MegaFrame Отключен\r\n";
+	cnctToMegaFrame->ForeColor = System::Drawing::Color::DarkGreen;
+	cnctToMegaFrame->Text = "Подключить MegaFrame";
 }
 
-void Wagner::WagnerForm::OnDataFrameConnected(System::Object^ sender, SuperSimpleTcp::ConnectionEventArgs^ e) {
-	UpdateAction^ action = gcnew UpdateAction(this, &Wagner::WagnerForm::UpdateDataFrameConnected);
+void Wagner::WagnerForm::OnMegaFrameConnected(System::Object^ sender, SuperSimpleTcp::ConnectionEventArgs^ e) {
+	UpdateAction^ action = gcnew UpdateAction(this, &Wagner::WagnerForm::UpdateMegaFrameConnected);
 	this->Invoke(action);
 }
 
-void Wagner::WagnerForm::OnDataFrameDisconnected(System::Object^ sender, SuperSimpleTcp::ConnectionEventArgs^ e) {
-	UpdateAction^ action = gcnew UpdateAction(this, &Wagner::WagnerForm::UpdateDataFrameDisconnected);
+void Wagner::WagnerForm::OnMegaFrameDisconnected(System::Object^ sender, SuperSimpleTcp::ConnectionEventArgs^ e) {
+	UpdateAction^ action = gcnew UpdateAction(this, &Wagner::WagnerForm::UpdateMegaFrameDisconnected);
 	this->Invoke(action);
 }
 
-void Wagner::WagnerForm::OnDataFrameDataReceived(System::Object^ sender, SuperSimpleTcp::DataReceivedEventArgs^ e) {
+void Wagner::WagnerForm::OnMegaFrameDataReceived(System::Object^ sender, SuperSimpleTcp::DataReceivedEventArgs^ e) {
 	return;
-}
-
-bool Wagner::WagnerForm::SendMessage(WagnerPacket^ %packet, int size) {
-	array<Byte>^ msg = gcnew array<Byte>(size);
-	toBytes(packet, msg, size);
-	
-	if (!FocusClient->IsConnected)
-		return false;
-
-	rxStatus = ON_WAITING_MSG;
-	FocusClient->Send(msg);
-	return true;
 }
 
 #pragma endregion
 
-#pragma region MarshallingPackets
+#pragma region Bytes_Array Conversion
 
 void Wagner::WagnerForm::toBytes(WagnerPacket^ %packet, array<Byte>^ bytes, int size) {
 	IntPtr ptr = Marshal::AllocHGlobal(size);
@@ -330,12 +324,20 @@ void Wagner::WagnerForm::fromBytes(array<Byte>^ bytes, WagnerPacket^ %packet, in
 
 #pragma region ValidateTextBox
 
-System::String^ Wagner::WagnerForm::getFunctionNameFromString(String^ s) {
+void Wagner::WagnerForm::ParseStringName(String^ s, uint32_t* commandParsed, String^% appName) {
 	int charLocation = s->IndexOf("(", StringComparison::Ordinal);
-	if (charLocation > 0) {
-		return s->Substring(0, charLocation);
+	if (charLocation > 0 && commandNames->ContainsKey(s->Substring(0, charLocation))) {
+		String^ funcName = s->Substring(0, charLocation);
+		*commandParsed = commandNames[funcName];
+		if (FocusCommandListBox->Items->Contains(funcName))
+			appName = "Focus";
+		else if (MegaFrameCommandListBox->Items->Contains(funcName))
+			appName = "MegaFrame";
+		else if (HexapodCommandListBox->Items->Contains(funcName))
+			appName = "Hexapod";
+		else
+			appName = String::Empty;
 	}
-	return String::Empty;
 }
 
 System::Collections::Generic::List<uint32_t>^ Wagner::WagnerForm::getFunctionArgsFromString(String^ s) {
@@ -365,35 +367,15 @@ System::Collections::Generic::List<uint32_t>^ Wagner::WagnerForm::getFunctionArg
 }
 
 bool Wagner::WagnerForm::isFunctionValid(String^ s) {
-	bool isCorrectName = false;
-	bool isCorrectArgs = false;
-	int startOfArgs = s->IndexOf("(") + 1;
-	int endOfArgs = s->IndexOf(")");
-	if (s->Length - endOfArgs != 1)
-		return false;
+	String^ FocusFuncs = "^getPosition[(][)]|^park[(][)]|^getErrors[(][)]|^resetErrors[(][)]|moveStep[(][0-9]+[.]?[0-9]*[)]|moveTo[(][0-9]+[.]?[0-9]*[)]";
+	String^ MegaFrameFuncs = "|^setExposureTime[(][0-9]+[)]|^saveFrame[(][)]|^takeFrame[(][)]|^givePosition[(][)]|^pickUpExposure[(][)]|^getExposureTime[(][)]|^filterFrame[(][)]|^localizeFrame[(][)]";
+	String^ pattern = FocusFuncs + MegaFrameFuncs;
 
-	String^ funcName = getFunctionNameFromString(s);
-	if (String::IsNullOrEmpty(funcName))
-		return false;	
-	
-	if (funcs->ContainsKey(funcName))
-		isCorrectName = true;
-	
-	auto args = getFunctionArgsFromString(s);
-	if ((funcName == "moveTo" || funcName == "moveStep" ) && args->Count == 1)
-		isCorrectArgs = true;
-	else if (isCorrectName && funcName != "moveTo" && (endOfArgs - startOfArgs) == 0)
-		isCorrectArgs = true;
-	return (isCorrectName && isCorrectArgs);
-}
-
-System::String^ Wagner::WagnerForm::getAppByFuncName(String^ funcName) {
-	if (FocusCommandListBox->Items->Contains(funcName))
-		return "Focus";
-	else if (DataFrameCommandListBox->Items->Contains(funcName))
-		return "DataFrame";
-	else if (HexapodCommandListBox->Items->Contains(funcName))
-		return "Hexapod";
+	Regex^ regex = gcnew Regex(pattern);
+	Match^ match = regex->Match(s);
+	if (match->Success)
+		return true;
+	return false;
 }
 
 bool Wagner::WagnerForm::ValidateText() {
@@ -418,75 +400,27 @@ bool Wagner::WagnerForm::ValidateText() {
 
 #pragma endregion
 
-#pragma region Funcs
+#pragma region FocusFuncs
 
-bool Wagner::WagnerForm::GetPosition(uint32_t data) {
+bool Wagner::WagnerForm::SendWagnerPacket(uint32_t cmd, uint8_t status_code, uint32_t data) {
 	WagnerPacket^ packet = gcnew WagnerPacket();
-
-	packet->command = GET_POSITION;
-	packet->data = SUCCESS;
-	packet->data = data;
-	
-	int size = Marshal::SizeOf(packet);
-	return SendMessage(packet, size);
-}
-
-bool Wagner::WagnerForm::MoveTo(uint32_t data) {
-	WagnerPacket^ packet = gcnew WagnerPacket();
-
-	packet->command = MOVE_TO;
+	packet->command = cmd;
 	packet->status_code = SUCCESS;
 	packet->data = data;
 
 	int size = Marshal::SizeOf(packet);
-	return SendMessage(packet, size);
+	array<Byte>^ msg = gcnew array<Byte>(size);
+	toBytes(packet, msg, size);
+
+	if (!FocusClient->IsConnected)
+		return false;
+
+	rxStatus = ON_WAITING_MSG;
+	FocusClient->Send(msg);
+	return true;
 }
 
-bool Wagner::WagnerForm::Park(uint32_t data) {
-	WagnerPacket^ packet = gcnew WagnerPacket();
-
-	packet->command = PARK;
-	packet->status_code = SUCCESS;
-	packet->data = 0;
-
-	int size = Marshal::SizeOf(packet);
-	return SendMessage(packet, size);
-}
-
-bool Wagner::WagnerForm::GetErrors(uint32_t data) {
-	WagnerPacket^ packet = gcnew WagnerPacket();
-
-	packet->command = GET_ERRORS;
-	packet->status_code = SUCCESS;
-	packet->data = data;
-	
-	int size = Marshal::SizeOf(packet);
-	return SendMessage(packet, size);
-}
-
-bool Wagner::WagnerForm::ResetErrors(uint32_t data) {
-	WagnerPacket^ packet = gcnew WagnerPacket();
-
-	packet->command = RESET_ERRORS;
-	packet->status_code = SUCCESS;
-	packet->data = data;
-
-	int size = Marshal::SizeOf(packet);
-	return SendMessage(packet, size);
-}
-
-bool Wagner::WagnerForm::moveStep(uint32_t data) {
-	WagnerPacket^ packet = gcnew WagnerPacket();
-
-	packet->command = MOVE_STEP;
-	packet->status_code = SUCCESS;
-	packet->data = data;
-
-	int size = Marshal::SizeOf(packet);
-	return SendMessage(packet, size);
-}
-
-bool Wagner::WagnerForm::ParsePacket(WagnerPacket^ packet)	 {
+bool Wagner::WagnerForm::ParseWagnerPacket(WagnerPacket^ packet)	 {
 	if (packet->status_code == SUCCESS) {
 		float position = 0;
 		switch(packet->command) {
@@ -580,6 +514,15 @@ bool Wagner::WagnerForm::ParsePacket(WagnerPacket^ packet)	 {
 	}
 }
 
+bool Wagner::WagnerForm::SendPacket(uint32_t cmd, uint8_t status_code, uint32_t data) {
+	return;
+}
+
+bool Wagner::WagnerForm::ParsePacket(Packet^ packet) {
+	return;
+}
+
+
 #pragma endregion
 
 #pragma region Cyclogramm
@@ -610,12 +553,17 @@ System::Void Wagner::WagnerForm::DoCyclogrammWorker_DoWork(System::Object^ sende
 		}
 
 		try {
-			String^ funcName = getFunctionNameFromString(commands[StepCount]);
+			uint32_t funcName;
+			String^ app;
+			ParseStringName(commands[StepCount], &funcName, app);
 			auto args = getFunctionArgsFromString(commands[StepCount]);
-			String^ app = getAppByFuncName(funcName);
+			bool isConnected;
 
-			bool isConnected = funcs[funcName](args->Count == 0 ? 0 : args[0]);
-			
+			if (app == "Focus")
+				bool isConnected = SendWagnerPacket(funcName, SUCCESS, args->Count == 0 ? 0 : args[0]);
+			else
+				bool isConnected = SendPacket(funcName, SUCCESS, args->Count == 0 ? 0 : args[0]);
+
 			if (!isConnected) {
 				MessageBox::Show(String::Format(gcnew String("Нет соединения с {0}\n"), app),
 					Text, MessageBoxButtons::OK, MessageBoxIcon::Information);
@@ -679,7 +627,7 @@ System::Void Wagner::WagnerForm::DoCyclogrammWorker_RunWorkerCompleted(System::O
 	FocusCommandListBox->Enabled = true;
 
 	cnctToFocus->Enabled = true;
-	cnctToDataFrame->Enabled = true;
+	cnctToMegaFrame->Enabled = true;
 	cnctToHexapod->Enabled = true;
 
 	CyclogrammTextBox->ReadOnly = false;
